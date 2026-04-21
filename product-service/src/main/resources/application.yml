@@ -1,0 +1,24 @@
+# product-service 本地配置
+# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
+
+server:
+  port: 9005
+
+spring:
+  application:
+    name: product-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/trade_product?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: root123
+  data:
+    redis:
+      database: 15
+
+# Seata 配置（product-service 不参与分布式事务）
+seata:
+  enabled: false
+
+logging:
+  level:
+    com.trade.product: DEBUG

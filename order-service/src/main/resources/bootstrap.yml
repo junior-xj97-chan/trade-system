@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: order-service
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      username: nacos
+      password: nacos
+      # 配置中心
+      config:
+        server-addr: ${spring.cloud.nacos.server-addr}
+        username: ${spring.cloud.nacos.username}
+        password: ${spring.cloud.nacos.password}
+        file-extension: yml
+        shared-configs:
+          - data-id: shared-common.yml
+            group: SHARED_GROUP
+            refresh: true
+          - data-id: shared-xxljob.yml
+            group: SHARED_GROUP
+            refresh: true
+          - data-id: shared-sentinel.yml
+            group: SHARED_GROUP
+            refresh: true
+
+# ========================================
+# Seata 分布式事务配置（必须在 bootstrap.yml 中）
+# ========================================
+seata:
+  enabled: true
+  tx-service-group: trade-system-group
+  service:
+    vgroupMapping:
+      trade-system-group: default
+  registry:
+    type: nacos
+    nacos:
+      server-addr: 127.0.0.1:8848
+      username: nacos
+      password: nacos
+      application: seata-server
+      group: DEFAULT_GROUP
+      namespace: ""
+  config:
+    type: nacos
+    nacos:
+      server-addr: 127.0.0.1:8848
+      username: nacos
+      password: nacos
+      group: DEFAULT_GROUP
+      namespace: ""

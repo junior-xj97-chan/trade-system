@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: gateway
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      username: nacos
+      password: nacos
+      # 配置中心
+      config:
+        server-addr: ${spring.cloud.nacos.server-addr}
+        username: ${spring.cloud.nacos.username}
+        password: ${spring.cloud.nacos.password}
+        file-extension: yml
+        shared-configs:
+          - data-id: shared-common.yml
+            group: SHARED_GROUP
+            refresh: true
+
+# ========================================
+# Seata 分布式事务配置（网关不参与事务，禁用即可）
+# ========================================
+seata:
+  enabled: false

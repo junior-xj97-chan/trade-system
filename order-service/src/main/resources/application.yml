@@ -1,0 +1,43 @@
+# order-service 本地配置
+# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
+
+server:
+  port: 9002
+
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/trade_order?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: root123
+  data:
+    redis:
+      database: 12
+  cloud:
+    alibaba:
+      seata:
+        tx-service-group: trade-system-group
+
+# 订单超时配置
+order:
+  timeout-minutes: 30
+
+# XXL-JOB 执行器配置
+xxl:
+  job:
+    admin:
+      addresses: http://127.0.0.1:8080/xxl-job-admin
+      accessToken: default_token
+      timeout: 3
+    executor:
+      appname: order-service
+      enabled: true
+      port: 9999
+      logpath: ./logs/xxl-job/jobhandler
+      logretentiondays: 30
+
+# 本服务日志级别
+logging:
+  level:
+    com.trade.order: DEBUG

@@ -1,0 +1,24 @@
+# account-service 本地配置
+# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
+
+server:
+  port: 9004
+
+spring:
+  application:
+    name: account-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/trade_account?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: root123
+  data:
+    redis:
+      database: 14
+  cloud:
+    alibaba:
+      seata:
+        tx-service-group: trade-system-group
+
+logging:
+  level:
+    com.trade.account: DEBUG

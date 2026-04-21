@@ -1,0 +1,60 @@
+# gateway 本地配置
+# 公共配置已移至 Nacos: shared-sentinel.yml
+
+server:
+  port: 9000
+
+spring:
+  application:
+    name: gateway
+  main:
+    web-application-type: reactive
+  data:
+    redis:
+      database: 10
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 用户服务
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+        # 订单服务
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=1
+        # 交易服务
+        - id: trade-service
+          uri: lb://trade-service
+          predicates:
+            - Path=/api/trade/**
+          filters:
+            - StripPrefix=1
+        # 账户服务
+        - id: account-service
+          uri: lb://account-service
+          predicates:
+            - Path=/api/account/**
+          filters:
+            - StripPrefix=1
+        # 商品服务
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/product/**
+          filters:
+            - StripPrefix=1
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
