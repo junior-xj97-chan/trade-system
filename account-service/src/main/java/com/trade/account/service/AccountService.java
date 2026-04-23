@@ -7,17 +7,25 @@ import com.trade.account.mapper.AccountMapper;
 import com.trade.common.BizCode;
 import com.trade.common.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class AccountService {
 
     private final AccountMapper accountMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    // 幂等 Key 前缀
+    private static final String IDEMPOTENT_PREFIX = "account:deduct:";
+    // 幂等过期时间（分钟）
+    private static final long IDEMPOTENT_EXPIRE_MINUTES = 30;
 
     /**
      * 创建账户
@@ -47,16 +55,27 @@ public class AccountService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void freezeAmount(Long userId, BigDecimal amount) {
+        // ========== 幂等性检查：防止重复冻结 ==========
+        String idempotentKey = "account:freeze:" + userId + ":" + amount.toPlainString();
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         Account account = getByUserId(userId);
         if (account == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_NOT_FOUND);
         }
         if (account.getStatus() == 0) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_FROZEN);
         }
-        
+
         BigDecimal available = account.getBalance().subtract(account.getFrozenAmount());
         if (available.compareTo(amount) < 0) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.BALANCE_NOT_ENOUGH);
         }
 
@@ -70,11 +89,21 @@ public class AccountService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void unfreezeAmount(Long userId, BigDecimal amount) {
+        // ========== 幂等性检查：防止重复解冻 ==========
+        String idempotentKey = "account:unfreeze:" + userId + ":" + amount.toPlainString();
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         Account account = getByUserId(userId);
         if (account == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_NOT_FOUND);
         }
         if (account.getFrozenAmount().compareTo(amount) < 0) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.BALANCE_NOT_ENOUGH.getCode(), "冻结金额不足");
         }
 
@@ -89,13 +118,23 @@ public class AccountService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deductBalance(Long userId, BigDecimal amount) {
+        // ========== 幂等性检查：防止重复扣减 ==========
+        String idempotentKey = IDEMPOTENT_PREFIX + userId + ":" + amount.toPlainString();
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         Account account = getByUserId(userId);
         if (account == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_NOT_FOUND);
         }
-        
+
         BigDecimal frozen = account.getFrozenAmount();
         if (frozen.compareTo(amount) < 0) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.BALANCE_NOT_ENOUGH.getCode(), "冻结金额不足");
         }
 
@@ -111,8 +150,17 @@ public class AccountService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void recharge(Long userId, BigDecimal amount) {
+        // ========== 幂等性检查：防止重复充值 ==========
+        String idempotentKey = "account:recharge:" + userId + ":" + amount.toPlainString();
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         Account account = getByUserId(userId);
         if (account == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_NOT_FOUND);
         }
 
@@ -126,8 +174,17 @@ public class AccountService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void refund(Long userId, BigDecimal amount) {
+        // ========== 幂等性检查：防止重复退款 ==========
+        String idempotentKey = "account:refund:" + userId + ":" + amount.toPlainString();
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         Account account = getByUserId(userId);
         if (account == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_NOT_FOUND);
         }
 
@@ -143,11 +200,21 @@ public class AccountService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void sellReceive(Long userId, BigDecimal amount) {
+        // ========== 幂等性检查：防止重复收款 ==========
+        String idempotentKey = "account:sellReceive:" + userId + ":" + amount.toPlainString();
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         Account account = getByUserId(userId);
         if (account == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_NOT_FOUND);
         }
         if (account.getStatus() == 0) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ACCOUNT_FROZEN);
         }
 

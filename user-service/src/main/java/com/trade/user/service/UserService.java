@@ -84,6 +84,14 @@ public class UserService {
      * 修改状态
      */
     public void updateStatus(Long id, Integer status) {
+        // ========== 幂等性检查：防止重复修改状态 ==========
+        String idempotentKey = "user:status:" + id;
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", 30, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         User user = new User();
         user.setId(id);
         user.setStatus(status);

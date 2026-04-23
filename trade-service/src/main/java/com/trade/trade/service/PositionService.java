@@ -8,12 +8,14 @@ import com.trade.trade.entity.Position;
 import com.trade.trade.mapper.PositionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 持仓服务
@@ -29,6 +31,12 @@ import java.util.List;
 public class PositionService {
 
     private final PositionMapper positionMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    // 幂等 Key 前缀
+    private static final String IDEMPOTENT_PREFIX = "position:";
+    // 幂等过期时间（分钟）
+    private static final long IDEMPOTENT_EXPIRE_MINUTES = 30;
 
     // ==================== 核心持仓操作 ====================
 
@@ -51,6 +59,14 @@ public class PositionService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void buy(Long userId, Long productId, String productName, Integer quantity, BigDecimal price) {
+        // ========== 幂等性检查：防止重复建仓/加仓 ==========
+        String idempotentKey = IDEMPOTENT_PREFIX + "buy:" + userId + ":" + productId + ":" + quantity;
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         LambdaQueryWrapper<Position> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Position::getUserId, userId)
                .eq(Position::getProductId, productId)
@@ -105,6 +121,14 @@ public class PositionService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void sell(Long userId, Long productId, Integer quantity, BigDecimal price) {
+        // ========== 幂等性检查：防止重复减仓 ==========
+        String idempotentKey = IDEMPOTENT_PREFIX + "sell:" + userId + ":" + productId + ":" + quantity;
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         LambdaQueryWrapper<Position> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Position::getUserId, userId)
                .eq(Position::getProductId, productId)
@@ -112,10 +136,12 @@ public class PositionService {
         Position position = positionMapper.selectOne(wrapper);
 
         if (position == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.POSITION_NOT_FOUND);
         }
 
         if (position.getQuantity() < quantity) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.POSITION_NOT_ENOUGH);
         }
 

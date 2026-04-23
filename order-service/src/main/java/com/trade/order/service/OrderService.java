@@ -16,12 +16,14 @@ import com.trade.order.mapper.OrderMapper;
 import org.apache.seata.spring.annotation.GlobalTransactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -32,6 +34,12 @@ public class OrderService {
     private final AccountFeignClient accountFeignClient;
     private final TradeFeignClient tradeFeignClient;
     private final PositionFeignClient positionFeignClient;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    // 幂等 Key 前缀
+    private static final String IDEMPOTENT_PREFIX = "order:";
+    // 幂等过期时间（分钟）
+    private static final long IDEMPOTENT_EXPIRE_MINUTES = 30;
 
     /**
      * 创建订单（简化版，实际应配合前端页面和商品服务）
@@ -71,12 +79,23 @@ public class OrderService {
     @SentinelResource(value = "order:pay", blockHandler = "payOrderBlockHandler")
     @GlobalTransactional(rollbackFor = Exception.class, name = "pay-order")
     public void payOrder(Long id) {
+        // ========== 幂等性检查：防止重复支付 ==========
+        String idempotentKey = IDEMPOTENT_PREFIX + "pay:" + id;
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            log.warn("【支付订单-幂等拦截】orderId={}，请求已处理", id);
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         // 查询订单
         Order order = orderMapper.selectById(id);
         if (order == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ORDER_NOT_FOUND);
         }
         if (order.getStatus() != 1) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ORDER_STATUS_ERROR);
         }
 
@@ -132,15 +151,27 @@ public class OrderService {
     @SentinelResource(value = "order:sell", blockHandler = "sellOrderBlockHandler")
     @GlobalTransactional(rollbackFor = Exception.class, name = "sell-order")
     public void sellOrder(Long id) {
+        // ========== 幂等性检查：防止重复卖出 ==========
+        String idempotentKey = IDEMPOTENT_PREFIX + "sell:" + id;
+        Boolean success = redisTemplate.opsForValue().setIfAbsent(
+            idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        if (!success) {
+            log.warn("【卖出订单-幂等拦截】orderId={}，请求已处理", id);
+            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+        }
+
         // 查询订单
         Order order = orderMapper.selectById(id);
         if (order == null) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ORDER_NOT_FOUND);
         }
         if (order.getStatus() != 1) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ORDER_STATUS_ERROR);
         }
         if (order.getDirection() == null || order.getDirection() != 2) {
+            redisTemplate.delete(idempotentKey);
             throw new BusinessException(BizCode.ORDER_STATUS_ERROR.getCode(), "该订单不是卖出订单，无法执行卖出操作");
         }
 
@@ -196,16 +227,29 @@ public class OrderService {
         if (order == null) {
             throw new BusinessException(BizCode.ORDER_NOT_FOUND);
         }
-        
+
         Integer status = order.getStatus();
         if (status == 1) {
-            // 待支付订单：直接取消
+            // 待支付订单：直接取消（幂等处理：已完成/已取消的订单重复取消无害）
+            if (order.getStatus() == 4) {
+                log.info("【取消订单-幂等处理】orderNo={}，订单已取消", order.getOrderNo());
+                return;
+            }
             order.setStatus(4);
             order.setUpdateTime(LocalDateTime.now());
             orderMapper.updateById(order);
             log.info("【取消待支付订单】orderNo={}", order.getOrderNo());
         } else if (status == 2) {
-            // 已支付订单：退款流程
+            // 已支付订单：退款流程（需要幂等检查）
+            // ========== 幂等性检查：防止重复退款 ==========
+            String idempotentKey = IDEMPOTENT_PREFIX + "cancel:" + id;
+            Boolean success = redisTemplate.opsForValue().setIfAbsent(
+                idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
+            if (!success) {
+                log.warn("【取消订单-幂等拦截】orderId={}，请求已处理", id);
+                throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            }
+
             log.info("【取消已支付订单】orderNo={}，退款金额={}", order.getOrderNo(), order.getAmount());
             
             // ========== Seata 分布式事务分支 1：退款到账户 ==========

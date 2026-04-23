@@ -40,7 +40,10 @@ public enum BizCode {
     POSITION_NOT_ENOUGH(6002, "持仓数量不足"),
 
     // 限流模块 7xxx
-    RATE_LIMIT_EXCEEDED(7001, "请求过于频繁，请稍后重试");
+    RATE_LIMIT_EXCEEDED(7001, "请求过于频繁，请稍后重试"),
+
+    // 幂等模块 8xxx
+    DUPLICATE_REQUEST(8001, "请求已处理，请勿重复提交");
 
     private final Integer code;
     private final String message;
