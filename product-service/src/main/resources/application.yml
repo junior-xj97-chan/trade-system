@@ -13,7 +13,8 @@ spring:
     password: root123
   data:
     redis:
-      database: 15
+      database: 14
+      password: "123456"
 
 # Seata 配置（product-service 不参与分布式事务）
 seata:

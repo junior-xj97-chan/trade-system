@@ -11,7 +11,8 @@ spring:
     web-application-type: reactive
   data:
     redis:
-      database: 10
+      database: 0
+      password: "123456"
   cloud:
     gateway:
       discovery:
@@ -54,7 +55,12 @@ spring:
             - Path=/api/product/**
           filters:
             - StripPrefix=1
+    # Spring Cloud LoadBalancer 配置
+    loadbalancer:
+      ribbon:
+        enabled: false
 
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG
