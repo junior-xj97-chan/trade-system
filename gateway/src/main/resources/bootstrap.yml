@@ -6,6 +6,11 @@ spring:
       server-addr: 127.0.0.1:8848
       username: nacos
       password: nacos
+      # 服务发现（必须有！Gateway 才能找到其他微服务）
+      discovery:
+        server-addr: ${spring.cloud.nacos.server-addr}
+        username: ${spring.cloud.nacos.username}
+        password: ${spring.cloud.nacos.password}
       # 配置中心
       config:
         server-addr: ${spring.cloud.nacos.server-addr}

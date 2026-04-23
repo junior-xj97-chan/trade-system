@@ -31,6 +31,12 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
+        <!-- Spring Cloud LoadBalancer（显式引入，避免 Nacos 找不到实例） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-loadbalancer</artifactId>
+        </dependency>
+
         <!-- Sentinel 限流 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
