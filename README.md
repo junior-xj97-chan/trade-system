@@ -15,12 +15,16 @@ trade-system/
 │   ├── trade.sql                 # 交易表
 │   ├── product.sql               # 商品表
 │   └── position.sql              # 持仓表
+├── nacos-config/                 # Nacos 共享配置
+│   ├── shared-common.yml         # 公共配置（Redis/数据库）
+│   ├── shared-sentinel.yml       # Sentinel 配置
+│   └── shared-xxljob.yml         # XXL-JOB 配置
 ├── docs/                         # 开发文档
 │   └── SEATA-联调指南.md        # Seata 分布式事务联调测试文档
 ├── common/                       # 公共模块
 │   └── src/main/java/com/trade/common/
 │       ├── R.java               # 统一响应封装
-│       ├── BizCode.java          # 业务错误码枚举（1xxx~7xxx）
+│       ├── BizCode.java          # 业务错误码枚举（1xxx~8xxx）
 │       ├── BusinessException.java # 业务异常
 │       ├── GlobalExceptionHandler.java # 全局异常处理
 │       ├── PageResult.java       # 分页结果封装
@@ -95,11 +99,12 @@ trade-system/
 ```
 1. Nacos        sh startup.sh -m standalone (Linux) / cmd startup.cmd -m standalone (Windows)
 2. Seata Server seata-server.bat (Windows) / sh seata-server.sh (Linux)
-3. Redis        redis-server
-4. MySQL        创建数据库和表
-5. XXL-JOB      java -jar xxl-job-admin-3.4.0.jar (端口 8080)
+3. Sentinel     java -Dserver.port=8858 -jar sentinel-dashboard.jar (端口 8858)
+4. Redis        redis-server
+5. MySQL        创建数据库和表
+6. XXL-JOB      java -jar xxl-job-admin-3.4.0.jar (端口 8080)
 
-6. 微服务（按顺序启动）
+7. 微服务（按顺序启动）
    ├── gateway          9000  (网关入口)
    ├── user-service     9001  (用户服务)
    ├── account-service  9004  (账户服务)
@@ -274,28 +279,36 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 
 ### 7. 统一异常处理
 - **BusinessException**：带错误码的业务异常
-- **BizCode 枚举**：1xxx~7xxx 分类管理
+- **BizCode 枚举**：1xxx~8xxx 分类管理
 - **GlobalExceptionHandler**：统一响应格式
+
+### 8. 接口幂等性保障
+- **Redis Token 去重**：防止重复支付、退款、充值等操作
+- **统一错误码**：`DUPLICATE_REQUEST(8001)` 请求已处理
+- **幂等 Key 规则**：
+  - 订单类：`order:pay:{id}`、`order:sell:{id}`、`order:cancel:{id}`
+  - 账户类：`account:{操作}:{userId}:{amount}`
+  - 持仓类：`position:{操作}:{userId}:{productId}:{quantity}`
+  - 交易类：`trade:{操作}:{orderId}`
+- **30分钟过期**：允许用户稍后重新发起请求
 
 ## 📞 后续优化方向
 
 ### 🔴 高优先级（面试重点）
 
-| 功能 | 说明 | 价值 |
+| 功能 | 说明 | 状态 |
 |------|------|------|
-| **RabbitMQ 消息队列** | 订单支付成功后发送消息，解耦持仓更新 | 展示异步解耦能力 |
-| **Redis + RabbitMQ 秒杀系统** | 高并发下单场景，消息队列削峰 | 压测数据用于简历 |
-| **JMeter 压测** | 生成 QPS/TPS/响应时间报告 | 量化性能指标 |
-| **SkyWalking 链路追踪** | 可视化调用链路、性能分析 | 完善可观测性 |
+| **SkyWalking 链路追踪** | 可视化调用链路、性能分析 | ⏳ 待实现 |
 
-### 🟡 中优先级（加分项）
+### ✅ 已完成
 
-| 功能 | 说明 | 价值 |
-|------|------|------|
-| **接口幂等性** | Token 机制防止重复支付 | 金融系统必备 |
-| **Nacos 配置中心** | 配置文件统一管理 | 展示配置管理能力 |
-| **股票行情接入** | 实时价格同步 | 业务真实性 |
-| **单元测试** | JUnit + Mockito | 代码质量 |
+| 功能 | 说明 | 完成时间 |
+|------|------|----------|
+| **RabbitMQ 消息队列** | 订单支付成功后异步解耦（seckill-system 实现） | 2026-04-18 |
+| **Redis + RabbitMQ 秒杀系统** | 高并发场景，Redis预减库存 + MQ异步下单，500并发零超卖 | 2026-04-18 |
+| **JMeter 压测** | 压测报告 QPS:75.8 / 响应时间:13ms / 超卖率:0% | 2026-04-18 |
+| **Nacos 配置中心** | shared-common/sentinel/xxljob 统一管理 | 2026-04-20 |
+| **接口幂等性保障** | Redis Token 机制防止重复支付、退款、充值等 | 2026-04-23 |
 
 ### 🟢 低优先级（锦上添花）
 
