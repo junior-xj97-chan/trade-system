@@ -89,6 +89,7 @@ trade-system/
 | Seata | 2.x | 分布式事务（AT模式） |
 | Sentinel | 2.x | 流量控制/熔断降级 |
 | XXL-JOB | 3.4.0 | 任务调度 |
+| SkyWalking | 10.4.0 | 链路追踪 |
 | MyBatis-Plus | 3.5.9 | ORM框架 |
 | Redis | 7.x | 缓存/会话存储 |
 | Lombok | 1.18.40 | 简化代码 |
@@ -102,15 +103,18 @@ trade-system/
 3. Sentinel     java -Dserver.port=8858 -jar sentinel-dashboard.jar (端口 8858)
 4. Redis        redis-server
 5. MySQL        创建数据库和表
-6. XXL-JOB      java -jar xxl-job-admin-3.4.0.jar (端口 8080)
+6. XXL-JOB      java -jar xxl-job-admin-3.4.0.jar (端口 8081)
+7. SkyWalking   D:\skywalking-apm\bin\startup.bat (UI端口 8088, OAP端口 11800)
 
-7. 微服务（按顺序启动）
+8. 微服务（按顺序启动，使用 SkyWalking Agent）
    ├── gateway          9000  (网关入口)
    ├── user-service     9001  (用户服务)
    ├── account-service  9004  (账户服务)
    ├── order-service    9002  (订单服务)
    ├── trade-service    9003  (交易服务)
    └── product-service  9005  (商品服务)
+   
+   启动脚本: trade-system/start-scripts/start-all.bat (一键启动)
 ```
 
 ## 📝 数据库设计
@@ -292,13 +296,29 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
   - 交易类：`trade:{操作}:{orderId}`
 - **30分钟过期**：允许用户稍后重新发起请求
 
+### 9. 分布式链路追踪（SkyWalking）
+- **SkyWalking 10.4.0**：可视化链路追踪平台
+- **Agent 9.6.0**：Java Agent 自动注入，无需修改代码
+- **监控能力**：
+  - 服务拓扑图：可视化展示微服务调用关系
+  - 调用链路追踪：完整记录每个请求的调用链
+  - 性能分析：接口响应时间、吞吐量、慢查询
+  - 数据库追踪：自动追踪 MySQL、Redis 操作
+- **Agent 配置参数**：
+  ```
+  -javaagent:D:\skywalking-agent\skywalking-agent.jar
+  -Dskywalking.agent.service_name=服务名
+  -Dskywalking.collector.backend_service=127.0.0.1:11800
+  ```
+- **一键启动**：start-scripts/start-all.bat 自动加载 Agent
+
 ## 📞 后续优化方向
 
 ### 🔴 高优先级（面试重点）
 
 | 功能 | 说明 | 状态 |
 |------|------|------|
-| **SkyWalking 链路追踪** | 可视化调用链路、性能分析 | ⏳ 待实现 |
+| Docker 容器化部署 | K8s 编排 | ⏳ 低优先级 |
 
 ### ✅ 已完成
 
@@ -309,6 +329,7 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 | **JMeter 压测** | 压测报告 QPS:75.8 / 响应时间:13ms / 超卖率:0% | 2026-04-18 |
 | **Nacos 配置中心** | shared-common/sentinel/xxljob 统一管理 | 2026-04-20 |
 | **接口幂等性保障** | Redis Token 机制防止重复支付、退款、充值等 | 2026-04-23 |
+| **SkyWalking 链路追踪** | 可视化调用链路、服务拓扑、性能分析、数据库追踪 | 2026-04-25 |
 
 ### 🟢 低优先级（锦上添花）
 
