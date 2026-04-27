@@ -1,0 +1,78 @@
+# ================================================================
+# Seata Server 2.x 配置
+# 注册中心: Nacos（环境变量覆盖）
+# 存储模式: DB (MySQL)（环境变量覆盖）
+# ================================================================
+spring:
+  application:
+    name: seata-server
+
+logging:
+  config: classpath:logback-spring.xml
+  file:
+    path: ${log.home:./logs}/seata-server
+
+console:
+  user:
+    username: seata
+    password: seata
+
+seata:
+  config:
+    type: nacos
+    nacos:
+      server-addr: 172.20.0.13:8848
+      namespace: ""
+      group: DEFAULT_GROUP
+      username: nacos
+      password: nacos
+      data-id: seataServer.properties
+
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: 172.20.0.13:8848
+      group: DEFAULT_GROUP
+      namespace: ""
+      username: nacos
+      password: nacos
+
+  store:
+    mode: db
+    db:
+      datasource: druid
+      dbType: mysql
+      driverClassName: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://172.20.0.10:3306/seata?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      user: root
+      password: root123
+      min-conn: 10
+      max-conn: 100
+      global-table: global_table
+      branch-table: branch_table
+      lock-table: lock_table
+      distributed-lock-table: distributed_lock
+      query-limit: 1000
+      max-wait: 5000
+
+  server:
+    service-port: 8091
+    max-commit-retry-timeout: -1
+    max-rollback-retry-timeout: -1
+    rollback-retry-timeout-unlock-enable: false
+    enable-check-auth: true
+    enable-parallel-request-handle: true
+    retry-dead-threshold: 130000
+    xaer-nota-retry-timeout: 60000
+    recovery:
+      committing-retry-period: 1000
+      async-committing-retry-period: 1000
+      rollbacking-retry-period: 1000
+      timeout-retry-period: 1000
+
+  security:
+    secretKey: SeataSecretKey0c382ef121d778043159209298085776
+    tokenValidityInMilliseconds: 1800000
+    ignore:
+      urls: /,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.ico,/console-fe/public/**,/api/v1/auth/login

@@ -6,7 +6,9 @@ import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.trade.common.BizCode;
 import com.trade.common.BusinessException;
 import com.trade.common.R;
+import com.trade.common.config.RabbitMQConfig;
 import com.trade.common.entity.Trade;
+import com.trade.common.mq.OrderPaidMessage;
 import com.trade.order.controller.OrderController.CreateOrderRequest;
 import com.trade.order.entity.Order;
 import com.trade.order.feign.AccountFeignClient;
@@ -16,6 +18,7 @@ import com.trade.order.mapper.OrderMapper;
 import org.apache.seata.spring.annotation.GlobalTransactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +38,7 @@ public class OrderService {
     private final TradeFeignClient tradeFeignClient;
     private final PositionFeignClient positionFeignClient;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RabbitTemplate rabbitTemplate;
 
     // 幂等 Key 前缀
     private static final String IDEMPOTENT_PREFIX = "order:";
@@ -140,6 +144,25 @@ public class OrderService {
         order.setStatus(2); // 已支付
         order.setUpdateTime(LocalDateTime.now());
         orderMapper.updateById(order);
+
+        // ========== MQ 异步通知：发送订单支付成功消息 ==========
+        log.info("【MQ发送】订单支付成功消息，orderNo={}", order.getOrderNo());
+        OrderPaidMessage message = OrderPaidMessage.builder()
+            .orderId(order.getId())
+            .userId(order.getUserId())
+            .direction(order.getDirection())
+            .productCode(order.getProductId().toString())
+            .productName(order.getProductName())
+            .quantity(order.getQuantity())
+            .price(order.getPrice())
+            .amount(order.getAmount())
+            .paidTime(LocalDateTime.now())
+            .build();
+        rabbitTemplate.convertAndSend(
+            RabbitMQConfig.TRADE_EXCHANGE,
+            RabbitMQConfig.ORDER_PAID_KEY,
+            message
+        );
 
         log.info("【支付完成】orderNo={}", order.getOrderNo());
     }

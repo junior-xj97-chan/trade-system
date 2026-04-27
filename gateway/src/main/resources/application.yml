@@ -1,5 +1,5 @@
 # gateway 本地配置
-# 公共配置已移至 Nacos: shared-sentinel.yml
+# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
 
 server:
   port: 9000
@@ -14,6 +14,28 @@ spring:
       database: 0
       password: "123456"
   cloud:
+    # 激活 bootstrap.yml 加载（Spring Boot 3.x 默认关闭）
+    bootstrap:
+      enabled: true
+    # Nacos 服务发现配置
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+        fail-fast: false
+        shared-configs:
+          - data-id: shared-common.yml
+            group: SHARED_GROUP
+            refresh: true
+          - data-id: shared-sentinel.yml
+            group: SHARED_GROUP
+            refresh: true
     gateway:
       discovery:
         locator:
@@ -53,6 +75,13 @@ spring:
           uri: lb://product-service
           predicates:
             - Path=/api/product/**
+          filters:
+            - StripPrefix=1
+        # 搜索服务（ES）
+        - id: search-service
+          uri: lb://search-service
+          predicates:
+            - Path=/api/search/**
           filters:
             - StripPrefix=1
     # Spring Cloud LoadBalancer 配置

@@ -3,6 +3,7 @@ package com.trade.product.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.trade.common.R;
+import com.trade.common.entity.ProductDTO;
 import com.trade.product.entity.Product;
 import com.trade.product.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -76,12 +77,15 @@ public class ProductController {
      */
     @GetMapping("/{productId}")
     @Operation(summary = "查询商品详情")
-    public R<Product> detail(@PathVariable Long productId) {
+    public R<ProductDTO> detail(@PathVariable Long productId) {
         if (productId == null) {
             return R.fail("商品ID不能为空");
         }
         Product product = productService.getById(productId);
-        return product != null ? R.ok(product) : R.fail("商品不存在");
+        if (product == null) {
+            return R.fail("商品不存在");
+        }
+        return R.ok(convertToDTO(product));
     }
 
     /**
@@ -90,9 +94,28 @@ public class ProductController {
     @SentinelResource("product:getByCode")
     @GetMapping("/code/{productCode}")
     @Operation(summary = "根据商品代码查询")
-    public R<Product> getByCode(@PathVariable String productCode) {
+    public R<ProductDTO> getByCode(@PathVariable String productCode) {
         Product product = productService.getByProductCode(productCode);
-        return product != null ? R.ok(product) : R.fail("商品不存在");
+        if (product == null) {
+            return R.fail("商品不存在");
+        }
+        return R.ok(convertToDTO(product));
+    }
+
+    /**
+     * 实体转换为 DTO
+     */
+    private ProductDTO convertToDTO(Product product) {
+        ProductDTO dto = new ProductDTO();
+        dto.setId(product.getId());
+        dto.setProductCode(product.getProductCode());
+        dto.setProductName(product.getProductName());
+        dto.setCurrentPrice(product.getCurrentPrice());
+        dto.setCategory(product.getCategory());
+        dto.setStatus(product.getStatus());
+        dto.setCreateTime(product.getCreateTime());
+        dto.setUpdateTime(product.getUpdateTime());
+        return dto;
     }
 
     /**

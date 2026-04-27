@@ -1,0 +1,16 @@
+# ========================================
+# Nacos 共享配置 - XXL-JOB 配置（Docker 版本）
+# 适用于: order-service
+# ========================================
+
+xxl:
+  job:
+    admin:
+      addresses: http://172.20.0.18:8080/xxl-job-admin
+      accessToken: default_token
+      timeout: 3
+    executor:
+      enabled: true
+      port: 9999
+      logpath: ./logs/xxl-job/jobhandler
+      logretentiondays: 30

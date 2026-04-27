@@ -7,7 +7,7 @@ echo ========================================
 set SERVICE_NAME=user-service
 set SERVICE_PORT=9001
 set AGENT_PATH=D:\skywalking-agent\skywalking-agent.jar
-set OAP_SERVER=127.0.0.1:11800
+set OAP_SERVER=172.20.0.15:11800
 
 set "JAVA_OPTS=-javaagent:%AGENT_PATH% -Dskywalking.agent.service_name=%SERVICE_NAME% -Dskywalking.collector.backend_service=%OAP_SERVER%"
 set "SERVER_OPTS=--spring.profiles.active=dev"

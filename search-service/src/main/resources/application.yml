@@ -1,0 +1,60 @@
+# search-service 本地配置
+
+server:
+  port: 9006
+
+spring:
+  application:
+    name: search-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/trade_product?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root123
+  data:
+    redis:
+      database: 0
+      password: "123456"
+  elasticsearch:
+    uris: http://127.0.0.1:9200
+
+# Seata 配置（search-service 不参与分布式事务）
+seata:
+  enabled: false
+
+# XXL-JOB 配置（直接写在 application.yml，不使用 shared-configs，避免加载时机问题）
+xxl:
+  job:
+    admin:
+      addresses: http://127.0.0.1:8081/xxl-job-admin
+      accessToken: default_token
+      timeout: 3
+    executor:
+      enabled: true
+      appname: search-service
+      port: 9007
+      logpath: ./logs/xxl-job/jobhandler
+      logretentiondays: 30
+
+# OpenFeign 配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 10000
+        readTimeout: 30000
+
+logging:
+  level:
+    com.trade.search: DEBUG
+    org.springframework.data.elasticsearch: DEBUG

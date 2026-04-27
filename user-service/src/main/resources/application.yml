@@ -7,8 +7,19 @@ server:
 spring:
   application:
     name: user-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
   datasource:
-    url: jdbc:mysql://localhost:3306/trade_user?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    url: jdbc:mysql://127.0.0.1:3306/trade_user?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root123
   data:

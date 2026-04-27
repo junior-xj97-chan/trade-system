@@ -11,6 +11,7 @@ echo   3. Account Service (9004)
 echo   4. Product Service (9005)
 echo   5. Trade Service (9003)
 echo   6. Order Service (9002)
+echo   7. Search Service (9006)
 echo.
 
 cd /d %~dp0
@@ -31,6 +32,9 @@ start "Trade-Service" cmd /k "call start-trade-service.bat"
 timeout /t 3 /nobreak >nul
 
 start "Order-Service" cmd /k "call start-order-service.bat"
+timeout /t 3 /nobreak >nul
+
+start "Search-Service" cmd /k "call start-search-service.bat"
 
 echo.
 echo 所有服务已启动！请访问 SkyWalking UI: http://localhost:8088

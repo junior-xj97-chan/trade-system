@@ -1,0 +1,28 @@
+# ========================================
+# Bootstrap 上下文配置
+# ========================================
+
+spring:
+  cloud:
+    # 激活 bootstrap.yml 加载（Spring Boot 3.x 默认关闭）
+    bootstrap:
+      enabled: true
+    nacos:
+      username: nacos
+      password: nacos
+      # 服务发现配置
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      # 配置中心
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+        fail-fast: false
+
+# 应用名称
+application:
+  name: search-service

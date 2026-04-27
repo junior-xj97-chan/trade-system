@@ -73,7 +73,26 @@ trade-system/
         ├── controller/ProductController.java
         ├── service/ProductService.java
         ├── entity/Product.java
-        └── mapper/ProductMapper.java
+        ├── mapper/ProductMapper.java
+        └── feign/ProductFeignClient.java    # 对外暴露商品查询接口
+        └── feign/fallback/ProductFeignFallbackFactory.java  # Feign 降级
+└── search-service/              # 搜索服务 (端口: 9006)
+    └── src/main/java/com/trade/search/
+        ├── controller/SearchController.java  # 搜索接口
+        ├── service/
+        │   ├── ProductSearchService.java      # ES 搜索服务
+        │   └── DataSyncService.java           # 数据同步服务
+        ├── feign/ProductFeignClient.java    # 商品服务调用（查最新数据）
+        ├── feign/fallback/ProductFeignFallbackFactory.java  # Feign 降级
+        ├── consumer/ProductSyncConsumer.java # MQ 消费者（实时同步）
+        ├── job/DataSyncJob.java              # XXL-JOB 同步任务
+        ├── config/XxlJobConfig.java           # XXL-JOB 执行器配置
+        ├── document/ProductDocument.java      # ES 文档实体
+        ├── repository/ProductSearchRepository.java  # ES 仓库
+        ├── mapper/ProductMapper.java           # MySQL Mapper
+        └── dto/
+            ├── SearchRequest.java              # 搜索请求
+            └── SearchResponse.java              # 搜索响应
 ```
 
 ## 🛠️ 技术栈
@@ -88,34 +107,111 @@ trade-system/
 | OpenFeign | 4.x | 服务间调用 |
 | Seata | 2.x | 分布式事务（AT模式） |
 | Sentinel | 2.x | 流量控制/熔断降级 |
+| RabbitMQ | 3.x | 消息队列/异步解耦 |
 | XXL-JOB | 3.4.0 | 任务调度 |
 | SkyWalking | 10.4.0 | 链路追踪 |
 | MyBatis-Plus | 3.5.9 | ORM框架 |
 | Redis | 7.x | 缓存/会话存储 |
+| Elasticsearch | 8.x | 全文搜索引擎 |
+| IK Analyzer | 8.12.0 | 中文分词器 |
 | Lombok | 1.18.40 | 简化代码 |
 | Swagger/OpenAPI | 3.0 | 接口文档 |
 
 ## 🚀 启动顺序
 
-```
-1. Nacos        sh startup.sh -m standalone (Linux) / cmd startup.cmd -m standalone (Windows)
-2. Seata Server seata-server.bat (Windows) / sh seata-server.sh (Linux)
-3. Sentinel     java -Dserver.port=8858 -jar sentinel-dashboard.jar (端口 8858)
-4. Redis        redis-server
-5. MySQL        创建数据库和表
-6. XXL-JOB      java -jar xxl-job-admin-3.4.0.jar (端口 8081)
-7. SkyWalking   D:\skywalking-apm\bin\startup.bat (UI端口 8088, OAP端口 11800)
+> **提示**：有两套启动脚本，分别适用于不同场景：
+> - `start-scripts/`：本地 IDEA/命令行运行微服务（通过 `-javaagent` 加载 SkyWalking Agent）
+> - `docker-scripts/`：Docker 容器化运行微服务（通过 `JAVA_TOOL_OPTIONS` 环境变量注入）
 
-8. 微服务（按顺序启动，使用 SkyWalking Agent）
-   ├── gateway          9000  (网关入口)
-   ├── user-service     9001  (用户服务)
-   ├── account-service  9004  (账户服务)
-   ├── order-service    9002  (订单服务)
-   ├── trade-service    9003  (交易服务)
-   └── product-service  9005  (商品服务)
-   
-   启动脚本: trade-system/start-scripts/start-all.bat (一键启动)
+### 方式一：Docker 中间件 + 本地微服务（推荐）
+
+```powershell
+# 1. 启动所有中间件容器
+cd C:\Users\13129\WorkBuddy\Claw\trade-system\docker
+docker compose up -d
+
+# 2. 等待约 2 分钟后，上传 Nacos 共享配置
+cd ..\nacos-config
+.\upload-config-docker.ps1
+
+# 3. 启动本地微服务（带 SkyWalking Agent）
+cd ..\start-scripts
+start-all.bat
 ```
+
+### 方式二：本地中间件 + 本地微服务
+
+```
+1. MySQL        Windows 服务自动启动（端口 3306）
+2. Redis        Windows 服务自动启动（端口 6379）
+3. RabbitMQ     Windows 服务自动启动（端口 5672，控制台 15672）
+4. Nacos        D:\nacos\bin\startup.cmd -m standalone (端口 8848)
+5. Seata        D:\seata\seata-server.bat (端口 8091)
+6. Sentinel     D:\sentinel\start_sentinel.bat (端口 8858）
+7. XXL-JOB      D:\xxl-job\start_xxl_job.bat (端口 8081)
+8. SkyWalking   D:\skywalking-apm\bin\startup.bat (UI端口 8088)
+
+微服务：trade-system/start-scripts/start-all.bat
+```
+
+### 方式三：Docker 中间件 + Docker 微服务（完全容器化）
+
+```bash
+# 1. 启动所有中间件容器
+cd docker
+docker compose up -d
+
+# 2. 等待约 2 分钟后，上传 Nacos 共享配置
+cd ../nacos-config
+./upload-config-docker.ps1
+
+# 3. 构建微服务镜像（Jib）
+mvn clean package jib:dockerBuild -DskipTests
+
+# 4. 启动微服务容器
+cd ../docker-scripts
+bash docker-start-all.sh
+```
+
+**注意**：Docker 微服务模式需要在 `docker-scripts/` 目录下放置 SkyWalking Agent，或在构建镜像时将其打包进去。
+
+**容器访问地址：**
+| 服务 | 地址 | 说明 |
+|------|------|------|
+| Nacos | http://localhost:8848/nacos | nacos/nacos |
+| SkyWalking | http://localhost:8088 | 链路追踪 |
+| Sentinel | http://localhost:8858 | sentinel/sentinel |
+| XXL-JOB | http://localhost:8081 | admin/123456 |
+| RabbitMQ | http://localhost:15672 | guest/guest |
+| Elasticsearch | http://localhost:9200 | 搜索引擎 |
+| Kibana | http://localhost:5601 | ES 可视化（汉化） |
+
+### 方式二：本地中间件部署
+
+```
+1. MySQL        Windows 服务自动启动（端口 3306）
+2. Redis        Windows 服务自动启动（端口 6379）
+3. RabbitMQ     Windows 服务自动启动（端口 5672，控制台 15672）
+4. Nacos        D:\nacos\bin\startup.cmd -m standalone (端口 8848)
+5. Seata        D:\seata\seata-server.bat (端口 8091)
+6. Sentinel     D:\sentinel\start_sentinel.bat (端口 8858）
+7. XXL-JOB      D:\xxl-job\start_xxl_job.bat (端口 8081)
+8. SkyWalking   D:\skywalking-apm\bin\startup.bat (UI端口 8088)
+
+微服务：trade-system/start-scripts/start-all.bat
+```
+
+**微服务端口：**
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| gateway | 9000 | 网关入口 |
+| user-service | 9001 | 用户服务 |
+| order-service | 9002 | 订单服务 |
+| trade-service | 9003 | 交易/持仓服务 |
+| account-service | 9004 | 账户服务 |
+| product-service | 9005 | 商品服务 |
+| search-service | 9006 | 搜索服务（ES） |
+| search-service XXL-JOB | 9007 | XXL-JOB 执行器端口 |
 
 ## 📝 数据库设计
 
@@ -223,6 +319,20 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 | `/product/code/{code}` | GET | 按代码查询 |
 | `/product/{id}` | GET | 按ID查询 |
 
+### 搜索服务
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/search` | POST | 高级搜索（多条件组合） |
+| `/api/search/quick` | GET | 快速关键词搜索 |
+| `/api/search/code/{productCode}` | GET | 根据代码精确查询 |
+| `/api/search/index` | POST | 索引单个商品 |
+| `/api/search/index/batch` | POST | 批量索引商品 |
+| `/api/search/index/{id}` | DELETE | 删除商品索引 |
+| `/api/search/status` | GET | 检查索引状态 |
+| `/api/search/index/create` | POST | 创建索引 |
+| `/api/search/index/full` | POST | 全量同步（MySQL → ES） |
+| `/api/search/index/incremental` | POST | 增量同步（MySQL → ES） |
+
 ## 🔥 业务流程
 
 ### 买入流程（分布式事务）
@@ -279,6 +389,9 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 ### 6. 任务调度（XXL-JOB）
 - **订单超时检测**：每分钟扫描待支付订单
 - **超时自动取消**：超过 30 分钟自动取消
+- **ES 数据同步**：
+  - `dataFullSyncJob`：全量同步 MySQL 商品数据到 ES（每天凌晨 2 点）
+  - `dataIncrementalSyncJob`：增量同步 MySQL 商品数据到 ES（每小时）
 - **Web 可视化管理**：动态修改 Cron 表达式
 
 ### 7. 统一异常处理
@@ -312,32 +425,37 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
   ```
 - **一键启动**：start-scripts/start-all.bat 自动加载 Agent
 
+### 9. MQ 实时数据同步
+- **商品变更实时同步**：product-service 增删改商品时发送 MQ 消息
+- **search-service 消费**：监听商品同步队列，实时更新 ES 索引
+- **支持操作**：新增(CREATE)、修改(UPDATE)、删除(DELETE)、上架(ONLINE)、下架(OFFLINE)
+- **队列配置**：`product-sync-queue`，路由键 `product.sync`
+- **数据一致性保证**：
+  - CREATE：直接用 MQ 消息数据创建 ES 文档
+  - UPDATE/ONLINE/OFFLINE：**先通过 Feign 查询 product-service 获取数据库最新数据**，再更新 ES
+  - DELETE：直接用 productId 删除 ES 文档
+
 ## 📞 后续优化方向
-
-### 🔴 高优先级（面试重点）
-
-| 功能 | 说明 | 状态 |
-|------|------|------|
-| Docker 容器化部署 | K8s 编排 | ⏳ 低优先级 |
 
 ### ✅ 已完成
 
 | 功能 | 说明 | 完成时间 |
 |------|------|----------|
-| **RabbitMQ 消息队列** | 订单支付成功后异步解耦（seckill-system 实现） | 2026-04-18 |
-| **Redis + RabbitMQ 秒杀系统** | 高并发场景，Redis预减库存 + MQ异步下单，500并发零超卖 | 2026-04-18 |
-| **JMeter 压测** | 压测报告 QPS:75.8 / 响应时间:13ms / 超卖率:0% | 2026-04-18 |
+| **RabbitMQ 消息队列** | 订单支付成功后异步解耦 | 2026-04-18 |
 | **Nacos 配置中心** | shared-common/sentinel/xxljob 统一管理 | 2026-04-20 |
 | **接口幂等性保障** | Redis Token 机制防止重复支付、退款、充值等 | 2026-04-23 |
+| **RabbitMQ 集成** | Topic 交换机 + 订单支付消息通知（order-paid-queue） | 2026-04-25 |
 | **SkyWalking 链路追踪** | 可视化调用链路、服务拓扑、性能分析、数据库追踪 | 2026-04-25 |
+| **Docker 容器化部署** | Docker Compose 一键启动 9 个中间件（MySQL/Redis/RabbitMQ/Nacos/Seata/SkyWalking/Sentinel/XXL-JOB） | 2026-04-26 |
+| **XXL-JOB 任务调度** | 订单超时检测（每分钟扫描，30分钟自动取消）+ Web 可视化管理 | 2026-04-26 |
+| **MQ 实时数据同步** | product-service 商品变更 → MQ → search-service 实时同步 ES | 2026-04-27 |
+| **Elasticsearch 搜索服务** | 基于 ES + IK 中文分词器的商品搜索服务，支持关键词搜索、多条件过滤、排序分页、XXL-JOB 定时同步、MQ 实时同步 | 2026-04-27 |
 
 ### 🟢 低优先级（锦上添花）
 
 | 功能 | 说明 |
 |------|------|
-| Docker 容器化部署 | K8s 编排 |
 | ELK 日志收集 | 集中日志管理 |
-| 定时任务管理表 | XXL-JOB 任务可视化 |
 
 ---
 
@@ -364,3 +482,4 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 - 异步解耦（RabbitMQ）
 - 缓存优化（Redis）
 - 任务调度（XXL-JOB）
+- 全文搜索（Elasticsearch + IK 分词）

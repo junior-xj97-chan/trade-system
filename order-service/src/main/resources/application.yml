@@ -7,18 +7,42 @@ server:
 spring:
   application:
     name: order-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+    alibaba:
+      seata:
+        fail-fast: false
   datasource:
-    url: jdbc:mysql://localhost:3306/trade_order?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    url: jdbc:mysql://127.0.0.1:3306/trade_order?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root123
   data:
     redis:
       database: 12
       password: "123456"
-  cloud:
-    alibaba:
-      seata:
-        tx-service-group: trade-system-group
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+
+# Seata 配置（确保配置能被正确读取）
+seata:
+  enabled: false  # 暂时禁用 Seata，让服务先启动
+  tx-service-group: trade-system-group
+  service:
+    vgroupMapping:
+      trade-system-group: default
 
 # 订单超时配置
 order:

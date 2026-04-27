@@ -1,29 +1,36 @@
+# ========================================
+# Bootstrap 上下文配置（优先级高于 application.yml）
+# ========================================
+
 spring:
-  application:
-    name: gateway
   cloud:
+    # 激活 bootstrap.yml 加载（Spring Boot 3.x 默认关闭）
+    bootstrap:
+      enabled: true
     nacos:
-      server-addr: 127.0.0.1:8848
       username: nacos
       password: nacos
-      # 服务发现（必须有！Gateway 才能找到其他微服务）
+      # 服务发现配置
       discovery:
-        server-addr: ${spring.cloud.nacos.server-addr}
-        username: ${spring.cloud.nacos.username}
-        password: ${spring.cloud.nacos.password}
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
       # 配置中心
       config:
-        server-addr: ${spring.cloud.nacos.server-addr}
-        username: ${spring.cloud.nacos.username}
-        password: ${spring.cloud.nacos.password}
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
         file-extension: yml
-        shared-configs:
-          - data-id: shared-common.yml
-            group: SHARED_GROUP
-            refresh: true
+        fail-fast: false
+        # 暂时注释掉 shared-configs，避免配置覆盖问题
+        # shared-configs:
+        #   - data-id: shared-common.yml
+        #     group: SHARED_GROUP
+        #     refresh: true
+        #   - data-id: shared-sentinel.yml
+        #     group: SHARED_GROUP
+        #     refresh: true
 
-# ========================================
-# Seata 分布式事务配置（网关不参与事务，禁用即可）
-# ========================================
-seata:
-  enabled: false
+# 应用名称
+application:
+  name: gateway

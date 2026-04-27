@@ -48,7 +48,25 @@ INSERT INTO t_account (id, user_id, balance, frozen_amount, status, version, cre
 SELECT '账户数据插入完成' AS msg, COUNT(*) AS total FROM t_account;
 
 -- =============================================
--- 3. 订单数据 trade_order.t_order
+-- 3. 商品数据 trade_product.t_product
+-- =============================================
+USE trade_product;
+
+TRUNCATE TABLE t_product;
+
+INSERT INTO t_product (id, product_code, product_name, current_price, category, status, version, create_time, update_time, deleted) VALUES
+-- 与订单数据保持一致
+(101, '600036', '招商银行股票',    45.50,  1, 1, 0, '2026-01-01 08:00:00', '2026-01-01 08:00:00', 0),
+(102, '601318', '中国平安股票',   1680.00, 1, 1, 0, '2026-01-01 08:00:00', '2026-01-01 08:00:00', 0),
+(103, '600519', '贵州茅台股票',   220.00,  1, 1, 0, '2026-01-01 08:00:00', '2026-01-01 08:00:00', 0),
+(104, '000001', '平安银行股票',   12.50,   1, 1, 0, '2026-01-01 08:00:00', '2026-01-01 08:00:00', 0),
+(105, '601319', '中国平安股票B',  50.00,   1, 1, 0, '2026-01-01 08:00:00', '2026-01-01 08:00:00', 0),
+(106, '601398', '工商银行股票',    3.00,    1, 1, 0, '2026-01-01 08:00:00', '2026-01-01 08:00:00', 0);
+
+SELECT '商品数据插入完成' AS msg, COUNT(*) AS total FROM t_product;
+
+-- =============================================
+-- 4. 订单数据 trade_order.t_order
 -- =============================================
 USE trade_order;
 
@@ -99,9 +117,25 @@ INSERT INTO t_trade (id, trade_no, order_id, user_id, product_id, price, quantit
 SELECT '交易数据插入完成' AS msg, COUNT(*) AS total FROM t_trade;
 
 -- =============================================
--- 5. 数据概览（运行后验证）
+-- 5. 持仓数据 trade_trade.t_position
 -- =============================================
-SELECT '========== 数据概览 ==========' AS separator;
+USE trade_trade;
+
+TRUNCATE TABLE t_position;
+
+INSERT INTO t_position (id, user_id, product_id, product_name, quantity, avg_cost, current_price, status, version, create_time, update_time, deleted) VALUES
+-- alice 的持仓（对应历史买入交易）
+(5000001, 1000001, 102, '中国平安股票',   5,   1680.00, 1680.00, 1, 0, '2026-04-02 11:00:00', '2026-04-03 15:00:00', 0),
+(5000002, 1000001, 103, '贵州茅台股票',   20,  220.00,  220.00,  1, 0, '2026-04-03 15:00:00', '2026-04-03 15:00:00', 0),
+-- diana 的持仓（对应历史买入交易）
+(5000003, 1000004, 106, '工商银行股票',  500, 3.00,    3.00,   1, 0, '2026-04-01 15:00:00', '2026-04-01 15:00:00', 0);
+
+SELECT '持仓数据插入完成' AS msg, COUNT(*) AS total FROM t_position;
+
+-- =============================================
+-- 6. 数据概览（运行后验证）
+-- =============================================
+SELECT '========== 数据概览 ==========' AS `separator`;
 
 SELECT '用户表' AS tbl, COUNT(*) AS total, SUM(status=1) AS 正常, SUM(status=0) AS 禁用 FROM trade_user.t_user;
 SELECT '账户表' AS tbl, COUNT(*) AS total, SUM(status=1) AS 正常, SUM(status=0) AS 冻结,
@@ -110,6 +144,8 @@ SELECT '订单表' AS tbl, COUNT(*) AS total,
        SUM(status=1) AS 待支付, SUM(status=2) AS 已支付, SUM(status=3) AS 已完成, SUM(status=4) AS 已取消
 FROM trade_order.t_order;
 SELECT '交易表' AS tbl, COUNT(*) AS total, SUM(direction=1) AS 买入, SUM(direction=2) AS 卖出 FROM trade_trade.t_trade;
+SELECT '持仓表' AS tbl, COUNT(*) AS total, SUM(status=1) AS 正常, SUM(status=0) AS 已清仓 FROM trade_trade.t_position;
+SELECT '商品表' AS tbl, COUNT(*) AS total, SUM(status=1) AS 上架, SUM(status=0) AS 下架 FROM trade_product.t_product;
 
 -- =============================================
 -- 6. 测试场景速查
