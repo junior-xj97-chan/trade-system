@@ -116,6 +116,7 @@ trade-system/
 | IK Analyzer | 8.12.0 | 中文分词器 |
 | Lombok | 1.18.40 | 简化代码 |
 | Swagger/OpenAPI | 3.0 | 接口文档 |
+| ShardingSphere | 5.x | 分库分表（预留方案，待数据量达阈值后启用） |
 
 ## 🚀 启动顺序
 
@@ -456,6 +457,108 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 | 功能 | 说明 |
 |------|------|
 | ELK 日志收集 | 集中日志管理 |
+| **分库分表（ShardingSphere）** | 订单/交易表水平分片，详见下方"扩展方案"章节 |
+
+---
+
+## 📋 扩展方案预留：分库分表（ShardingSphere）
+
+> **当前状态**：方案预留，代码暂无改动。  
+> **触发条件**：`t_order` 或 `t_trade` 单表数据量超过 **2000 万行**，或写入 QPS 出现瓶颈时启用。
+
+### 为什么选 ShardingSphere-JDBC
+
+- **无代理侵入**：以 JDBC Driver 形式引入，业务代码零改动
+- **与 Seata 兼容**：官方支持 Seata AT 分布式事务
+- **Spring Boot 3.x 适配**：5.5.x 版本已支持
+
+### 分片目标表
+
+| 服务 | 表 | 分片键 | 分片数 | 策略 |
+|------|----|----|----|----|
+| order-service | `t_order` | `user_id` | 4 | 取模：`user_id % 4` |
+| trade-service | `t_trade` | `user_id` | 4 | 取模：`user_id % 4` |
+
+> 其余表（t_user、t_account、t_product、t_position）数据量相对小，暂不分片。
+
+### 分片后物理表命名
+
+```
+trade_order 库：
+  t_order_0、t_order_1、t_order_2、t_order_3
+
+trade_trade 库：
+  t_trade_0、t_trade_1、t_trade_2、t_trade_3
+```
+
+### 接入步骤（待执行）
+
+**1. 添加依赖（order-service / trade-service）**
+```xml
+<dependency>
+    <groupId>org.apache.shardingsphere</groupId>
+    <artifactId>shardingsphere-jdbc</artifactId>
+    <version>5.5.0</version>
+</dependency>
+```
+
+**2. 修改数据源配置**
+```yaml
+spring:
+  datasource:
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+    url: jdbc:shardingsphere:classpath:sharding.yaml
+```
+
+**3. sharding.yaml 核心配置（以 order-service 为例）**
+```yaml
+dataSources:
+  ds_0:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://127.0.0.1:3306/trade_order
+    username: root
+    password: root123
+
+rules:
+  - !SHARDING
+    tables:
+      t_order:
+        actualDataNodes: ds_0.t_order_${0..3}
+        tableStrategy:
+          standard:
+            shardingColumn: user_id
+            shardingAlgorithmName: t_order_mod
+    shardingAlgorithms:
+      t_order_mod:
+        type: INLINE
+        props:
+          algorithm-expression: t_order_${user_id % 4}
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE          # 全局唯一ID，替代自增主键
+
+props:
+  sql-show: true                 # 开发阶段开启，生产关闭
+```
+
+**4. 提前建好物理分片表**
+```sql
+-- 在 trade_order 库中执行
+CREATE TABLE t_order_0 LIKE t_order;
+CREATE TABLE t_order_1 LIKE t_order;
+CREATE TABLE t_order_2 LIKE t_order;
+CREATE TABLE t_order_3 LIKE t_order;
+```
+
+### 注意事项
+
+| 问题 | 解决方案 |
+|------|---------|
+| 自增ID在多表中重复 | 启用 ShardingSphere Snowflake 全局ID生成 |
+| 跨分片分页查询性能下降 | 查询时尽量携带 `user_id` 作为路由条件 |
+| 与 Seata AT 模式兼容 | ShardingSphere 5.x 官方支持，无需额外处理 |
+| 扩容（4片→8片）数据迁移 | 需提前规划，或初期直接分8片预留容量 |
 
 ---
 
