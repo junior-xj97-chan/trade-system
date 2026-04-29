@@ -43,9 +43,11 @@ public class SearchController {
     })
     @PostMapping
     public ResponseEntity<SearchResponse> search(@RequestBody SearchRequest request) {
-        log.info("搜索请求: keyword={}, exchange={}, type={}, page={}, size={}",
-                request.getKeyword(), request.getExchangeCode(), request.getProductType(),
-                request.getPage(), request.getSize());
+        log.info("搜索请求: keyword={}, market={}, exchangeCode={}, minPrice={}, maxPrice={}, sortField={}, sortOrder={}, page={}, size={}",
+                request.getKeyword(), request.getMarket(), request.getExchangeCode(),
+                request.getMinPrice(), request.getMaxPrice(),
+                request.getSortFieldEffective(), request.getSortOrderEffective(),
+                request.getPage(), request.getSizeEffective());
 
         SearchResponse response = productSearchService.search(request);
         return ResponseEntity.ok(response);

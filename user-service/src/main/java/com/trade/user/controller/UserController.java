@@ -29,7 +29,7 @@ public class UserController {
 
     @PostMapping("/login")
     @Operation(summary = "用户登录")
-    public R<String> login(@RequestBody LoginRequest request) {
+    public R<UserService.LoginResp> login(@RequestBody LoginRequest request) {
         return R.ok(userService.login(request));
     }
 

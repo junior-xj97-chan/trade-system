@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders;
+import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
+import co.elastic.clients.json.JsonData;
 
 /**
  * 商品搜索服务
@@ -40,11 +42,18 @@ public class ProductSearchService {
     public SearchResponse search(SearchRequest request) {
         long startTime = System.currentTimeMillis();
 
+        // 获取实际使用的分页参数
+        int actualPage = request.getPage();
+        int actualSize = request.getSizeEffective();
+        String sortField = request.getSortFieldEffective();
+        String sortOrder = request.getSortOrderEffective();
+        String exchangeCode = request.getExchangeCodeEffective();
+
         // 构建分页
-        Pageable pageable = buildPageable(request);
+        Pageable pageable = buildPageable(sortField, sortOrder, actualPage, actualSize);
 
         // 构建查询
-        Query query = buildQuery(request);
+        Query query = buildQuery(request, exchangeCode);
 
         // 执行搜索
         SearchHits<ProductDocument> searchHits = elasticsearchOperations.search(query, ProductDocument.class);
@@ -55,20 +64,12 @@ public class ProductSearchService {
                 .collect(Collectors.toList());
 
         long total = searchHits.getTotalHits();
-        int totalPages = (int) Math.ceil((double) total / request.getSize());
+        int totalPages = (int) Math.ceil((double) total / actualSize);
 
         long took = System.currentTimeMillis() - startTime;
 
-        return SearchResponse.builder()
-                .total(total)
-                .page(request.getPage())
-                .size(request.getSize())
-                .totalPages(totalPages)
-                .hasNext(request.getPage() < totalPages - 1)
-                .hasPrevious(request.getPage() > 0)
-                .products(products)
-                .took(took)
-                .build();
+        return SearchResponse.build(total, actualPage, actualSize, totalPages,
+                actualPage < totalPages - 1, actualPage > 0, products, took);
     }
 
     /**
@@ -82,16 +83,9 @@ public class ProductSearchService {
 
         long took = System.currentTimeMillis() - startTime;
 
-        return SearchResponse.builder()
-                .total(result.getTotalElements())
-                .page(page)
-                .size(size)
-                .totalPages(result.getTotalPages())
-                .hasNext(result.hasNext())
-                .hasPrevious(result.hasPrevious())
-                .products(result.getContent())
-                .took(took)
-                .build();
+        return SearchResponse.build(result.getTotalElements(), page, size,
+                result.getTotalPages(), result.hasNext(), result.hasPrevious(),
+                result.getContent(), took);
     }
 
     /**
@@ -143,16 +137,16 @@ public class ProductSearchService {
     /**
      * 构建分页
      */
-    private Pageable buildPageable(SearchRequest request) {
+    private Pageable buildPageable(String sortField, String sortOrder, int page, int size) {
         Sort sort = Sort.unsorted();
 
-        if (request.getSortField() != null && request.getSortOrder() != null) {
-            Sort.Direction direction = "asc".equalsIgnoreCase(request.getSortOrder())
+        if (sortField != null && !sortField.isBlank() && sortOrder != null && !sortOrder.isBlank()) {
+            Sort.Direction direction = "asc".equalsIgnoreCase(sortOrder)
                     ? Sort.Direction.ASC : Sort.Direction.DESC;
-            sort = Sort.by(direction, convertSortField(request.getSortField()));
+            sort = Sort.by(direction, convertSortField(sortField));
         }
 
-        return PageRequest.of(request.getPage(), request.getSize(), sort);
+        return PageRequest.of(page, size, sort);
     }
 
     /**
@@ -162,6 +156,7 @@ public class ProductSearchService {
         return switch (field) {
             case "price" -> "currentPrice";
             case "change" -> "changePercent";
+            case "changePercent" -> "changePercent";
             case "vol" -> "volume";
             default -> field;
         };
@@ -170,7 +165,7 @@ public class ProductSearchService {
     /**
      * 构建查询
      */
-    private Query buildQuery(SearchRequest request) {
+    private Query buildQuery(SearchRequest request, String exchangeCode) {
         BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
 
         // 关键词搜索
@@ -182,11 +177,11 @@ public class ProductSearchService {
                     .build()._toQuery());
         }
 
-        // 交易所过滤
-        if (request.getExchangeCode() != null && !request.getExchangeCode().isBlank()) {
+        // 交易所过滤（支持 market 或 exchangeCode）
+        if (exchangeCode != null && !exchangeCode.isBlank()) {
             boolQueryBuilder.filter(QueryBuilders.term()
                     .field("exchangeCode")
-                    .value(request.getExchangeCode())
+                    .value(exchangeCode)
                     .build()._toQuery());
         }
 
@@ -198,9 +193,24 @@ public class ProductSearchService {
                     .build()._toQuery());
         }
 
+        // 最低价格过滤
+        if (request.getMinPrice() != null) {
+            boolQueryBuilder.filter(QueryBuilders.range()
+                    .field("currentPrice")
+                    .gte(JsonData.of(request.getMinPrice()))
+                    .build()._toQuery());
+        }
+
+        // 最高价格过滤
+        if (request.getMaxPrice() != null) {
+            boolQueryBuilder.filter(QueryBuilders.range()
+                    .field("currentPrice")
+                    .lte(JsonData.of(request.getMaxPrice()))
+                    .build()._toQuery());
+        }
+
         return NativeQuery.builder()
                 .withQuery(boolQueryBuilder.build()._toQuery())
-                .withPageable(buildPageable(request))
                 .build();
     }
 }

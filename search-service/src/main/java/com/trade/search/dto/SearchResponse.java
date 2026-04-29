@@ -37,9 +37,31 @@ public class SearchResponse {
     @Schema(description = "是否还有上一页", example = "false")
     private Boolean hasPrevious;
 
-    @Schema(description = "商品列表")
+    @Schema(description = "商品列表（兼容旧接口）")
     private List<ProductDocument> products;
+
+    @Schema(description = "商品列表（前端兼容）")
+    private List<ProductDocument> records;
 
     @Schema(description = "搜索耗时（毫秒）", example = "25")
     private Long took;
+
+    /**
+     * 构建响应，自动同步 products 和 records
+     */
+    public static SearchResponse build(Long total, Integer page, Integer size,
+                                        Integer totalPages, Boolean hasNext, Boolean hasPrevious,
+                                        List<ProductDocument> products, Long took) {
+        return SearchResponse.builder()
+                .total(total)
+                .page(page)
+                .size(size)
+                .totalPages(totalPages)
+                .hasNext(hasNext)
+                .hasPrevious(hasPrevious)
+                .products(products)
+                .records(products)  // 前端兼容
+                .took(took)
+                .build();
+    }
 }

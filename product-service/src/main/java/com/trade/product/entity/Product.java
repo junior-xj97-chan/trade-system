@@ -32,6 +32,16 @@ public class Product {
     private BigDecimal currentPrice;
 
     /**
+     * 市场标识：SH-上海 SZ-深圳 HK-港股 US-美股
+     */
+    private String market;
+
+    /**
+     * 涨跌幅（%）
+     */
+    private java.math.BigDecimal changePercent;
+
+    /**
      * 分类：1-股票 2-基金 3-商品 4-其他
      */
     private Integer category;

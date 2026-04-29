@@ -16,9 +16,10 @@ import java.util.List;
 
 /**
  * 持仓管理控制器
+ * 路径：/trade/position/**（与 Gateway 路由 /api/trade/** 配合）
  */
 @RestController
-@RequestMapping("/position")
+@RequestMapping("/trade/position")
 @RequiredArgsConstructor
 @Tag(name = "持仓管理")
 public class PositionController {

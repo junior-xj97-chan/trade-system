@@ -8,6 +8,9 @@ import com.trade.common.PageResult;
 import com.trade.user.controller.UserController.*;
 import com.trade.user.entity.User;
 import com.trade.user.mapper.UserMapper;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -49,7 +52,7 @@ public class UserService {
     /**
      * 用户登录
      */
-    public String login(LoginRequest request) {
+    public LoginResp login(LoginRequest request) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(User::getUsername, request.getUsername());
         User user = userMapper.selectOne(wrapper);
@@ -66,9 +69,19 @@ public class UserService {
 
         // 生成 token
         String token = UUID.randomUUID().toString().replace("-", "");
-        redisTemplate.opsForValue().set(TOKEN_PREFIX + token, user.getId(), 2, TimeUnit.HOURS);
-        // 返回带 Bearer 前缀的 token（符合 OAuth2 标准）
-        return "Bearer " + token;
+        // 用 String 序列化 userId，避免 Gateway（Jackson）反序列化 JDK 二进制值失败
+        redisTemplate.opsForValue().set(TOKEN_PREFIX + token, String.valueOf(user.getId()), 2, TimeUnit.HOURS);
+        // 返回完整的登录响应（包含 token、userId、username），与前端 LoginResp 对齐
+        return new LoginResp("Bearer " + token, user.getId(), user.getUsername());
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LoginResp {
+        private String token;
+        private Long userId;
+        private String username;
     }
 
     /**

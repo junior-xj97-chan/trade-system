@@ -49,6 +49,12 @@
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
 
+        <!-- Redis 阻塞式（鉴权过滤器同步读取 Redis） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- Lombok（common 中标记 optional，不会传递，需单独引入） -->
         <dependency>
             <groupId>org.projectlombok</groupId>
