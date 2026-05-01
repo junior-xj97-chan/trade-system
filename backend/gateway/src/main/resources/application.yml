@@ -1,0 +1,104 @@
+# gateway 本地配置
+# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
+
+server:
+  port: 9000
+
+spring:
+  application:
+    name: gateway
+  main:
+    web-application-type: reactive
+  # 静态资源映射
+  web:
+    resources:
+      static-locations: classpath:/static/
+      add-mappings: true
+  # 错误页面配置
+  error:
+    path: /error
+    include-message: always
+  data:
+    redis:
+      database: 0
+      password: "123456"
+  cloud:
+    # 激活 bootstrap.yml 加载（Spring Boot 3.x 默认关闭）
+    bootstrap:
+      enabled: true
+    # Nacos 服务发现配置
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+        fail-fast: false
+        shared-configs:
+          - data-id: shared-common.yml
+            group: SHARED_GROUP
+            refresh: true
+          - data-id: shared-sentinel.yml
+            group: SHARED_GROUP
+            refresh: true
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 用户服务
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+        # 订单服务
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=1
+        # 交易服务
+        - id: trade-service
+          uri: lb://trade-service
+          predicates:
+            - Path=/api/trade/**
+          filters:
+            - StripPrefix=1
+        # 账户服务
+        - id: account-service
+          uri: lb://account-service
+          predicates:
+            - Path=/api/account/**
+          filters:
+            - StripPrefix=1
+        # 商品服务
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/product/**
+          filters:
+            - StripPrefix=1
+        # 搜索服务（ES）
+        - id: search-service
+          uri: lb://search-service
+          predicates:
+            - Path=/api/search/**
+          filters:
+            - StripPrefix=1
+    # Spring Cloud LoadBalancer 配置
+    loadbalancer:
+      ribbon:
+        enabled: false
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG

@@ -1,0 +1,85 @@
+# order-service 本地配置
+# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
+
+server:
+  port: 9002
+
+spring:
+  application:
+    name: order-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+    alibaba:
+      seata:
+        fail-fast: false
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/trade_order?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root123
+  data:
+    redis:
+      database: 12
+      password: "123456"
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+
+# Seata 配置
+seata:
+  enabled: true   # order-service 参与分布式事务
+  tx-service-group: trade-system-group
+  # 配置中心使用 Nacos
+  config:
+    type: nacos
+    nacos:
+      server-addr: 127.0.0.1:8848
+      group: DEFAULT_GROUP
+      username: nacos
+      password: nacos
+      data-id: seataServer.properties
+  # 注册中心使用 file 类型（直接使用本地 grouplist，不走 Nacos 注册中心）
+  registry:
+    type: file
+    file:
+      name: file.conf
+  service:
+    vgroupMapping:
+      trade-system-group: default
+    # grouplist 的 key 是集群名(default)，不是事务组名
+    default:
+      grouplist: 127.0.0.1:8091
+
+# 订单超时配置
+order:
+  timeout-minutes: 30
+
+# XXL-JOB 执行器配置
+xxl:
+  job:
+    admin:
+      addresses: http://127.0.0.1:8081/xxl-job-admin
+      accessToken: default_token
+      timeout: 3
+    executor:
+      appname: order-service
+      enabled: true
+      port: 9999
+      logpath: ./logs/xxl-job/jobhandler
+      logretentiondays: 30
+
+# 本服务日志级别
+logging:
+  level:
+    com.trade.order: DEBUG
