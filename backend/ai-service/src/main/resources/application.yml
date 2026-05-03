@@ -1,0 +1,44 @@
+# ai-service 本地配置
+# OpenRouter 配置通过环境变量 OPENROUTER_API_KEY 注入（不要硬编码）
+
+server:
+  port: 9007
+
+spring:
+  application:
+    name: ai-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+
+  # Spring AI OpenRouter 配置
+  ai:
+    openai:
+      # API Key 从环境变量读取，永不硬编码
+      api-key: ${OPENROUTER_API_KEY}
+      # OpenRouter API 地址（OpenAI 兼容）
+      base-url: https://openrouter.ai/api
+      chat:
+        options:
+          # 默认模型，可在 Nacos 配置中覆盖
+          # 推荐免费模型: google/gemini-2.0-flash-exp:free
+          model: google/gemini-2.0-flash-exp:free
+          temperature: 0.7
+          max-tokens: 2048
+
+# Seata 不参与分布式事务
+seata:
+  enabled: false
+
+logging:
+  level:
+    com.trade.ai: DEBUG
+    org.springframework.ai: DEBUG
