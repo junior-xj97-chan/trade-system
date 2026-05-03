@@ -57,6 +57,16 @@
             <groupId>com.trade</groupId>
             <artifactId>common</artifactId>
         </dependency>
+
+        <!-- Flyway：数据库版本管理 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

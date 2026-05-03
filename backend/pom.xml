@@ -46,6 +46,9 @@
 
         <!-- Lombok - 升级以支持 Java 25 -->
         <lombok.version>1.18.40</lombok.version>
+
+        <!-- Flyway -->
+        <flyway.version>10.15.2</flyway.version>
     </properties>
 
     <dependencyManagement>
@@ -81,6 +84,19 @@
                 <artifactId>common</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <!-- Flyway Core -->
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+            <!-- Flyway MySQL 支持（Flyway 10.x 拆分了数据库驱动插件） -->
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-mysql</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -89,6 +105,24 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Flyway Maven Plugin（供 CI 执行 mvn flyway:migrate） -->
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-mysql</artifactId>
+                        <version>${flyway.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.mysql</groupId>
+                        <artifactId>mysql-connector-j</artifactId>
+                        <version>8.3.0</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>

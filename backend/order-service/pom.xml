@@ -76,6 +76,16 @@
             <artifactId>xxl-job-core</artifactId>
             <version>3.4.0</version>
         </dependency>
+
+        <!-- Flyway：数据库版本管理 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
