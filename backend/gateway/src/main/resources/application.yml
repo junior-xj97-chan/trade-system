@@ -93,6 +93,13 @@ spring:
             - Path=/api/search/**
           filters:
             - StripPrefix=1
+        # AI 智能服务
+        - id: ai-service
+          uri: lb://ai-service
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=1
     # Spring Cloud LoadBalancer 配置
     loadbalancer:
       ribbon:

@@ -19,6 +19,11 @@ spring:
         group: DEFAULT_GROUP
         file-extension: yml
         fail-fast: false
+        # 引入公共 Redis 配置
+        shared-configs:
+          - data-id: user-config.yaml
+            group: DEFAULT_GROUP
+            refresh: true
 
 application:
   name: ai-service
