@@ -1,5 +1,5 @@
-# gateway 本地配置
-# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
+﻿# gateway 鏈湴閰嶇疆
+# 鍏叡閰嶇疆宸茬Щ鑷?Nacos: shared-common.yml, shared-sentinel.yml
 
 server:
   port: 9000
@@ -9,24 +9,24 @@ spring:
     name: gateway
   main:
     web-application-type: reactive
-  # 静态资源映射
+  # 闈欐€佽祫婧愭槧灏?
   web:
     resources:
       static-locations: classpath:/static/
       add-mappings: true
-  # 错误页面配置
+  # 閿欒椤甸潰閰嶇疆
   error:
     path: /error
     include-message: always
   data:
     redis:
       database: 0
-      password: "123456"
+      password: "redis123"
   cloud:
-    # 激活 bootstrap.yml 加载（Spring Boot 3.x 默认关闭）
+    # 婵€娲?bootstrap.yml 鍔犺浇锛圫pring Boot 3.x 榛樿鍏抽棴锛?
     bootstrap:
       enabled: true
-    # Nacos 服务发现配置
+    # Nacos 鏈嶅姟鍙戠幇閰嶇疆
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
@@ -51,56 +51,77 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # 用户服务
+        # 鐢ㄦ埛鏈嶅姟
         - id: user-service
           uri: lb://user-service
           predicates:
             - Path=/api/user/**
           filters:
             - StripPrefix=1
-        # 订单服务
+        # 璁㈠崟鏈嶅姟
         - id: order-service
           uri: lb://order-service
           predicates:
             - Path=/api/order/**
           filters:
             - StripPrefix=1
-        # 交易服务
+        # 浜ゆ槗鏈嶅姟
         - id: trade-service
           uri: lb://trade-service
           predicates:
             - Path=/api/trade/**
           filters:
             - StripPrefix=1
-        # 账户服务
+        # 璐︽埛鏈嶅姟
         - id: account-service
           uri: lb://account-service
           predicates:
             - Path=/api/account/**
           filters:
             - StripPrefix=1
-        # 商品服务
+        # 鍟嗗搧鏈嶅姟
         - id: product-service
           uri: lb://product-service
           predicates:
             - Path=/api/product/**
           filters:
             - StripPrefix=1
-        # 搜索服务（ES）
+        # 鎼滅储鏈嶅姟锛圗S锛?
         - id: search-service
           uri: lb://search-service
           predicates:
             - Path=/api/search/**
           filters:
             - StripPrefix=1
-        # AI 智能服务
+        # AI 鏅鸿兘鏈嶅姟
         - id: ai-service
           uri: lb://ai-service
           predicates:
             - Path=/api/ai/**
           filters:
             - StripPrefix=1
-    # Spring Cloud LoadBalancer 配置
+        # 秒杀服务
+        - id: seckill-service
+          uri: lb://seckill-service
+          predicates:
+            - Path=/api/seckill/**
+          filters:
+            - StripPrefix=1
+        # 行情服务
+        - id: quote-service
+          uri: lb://quote-service
+          predicates:
+            - Path=/api/quote/**
+          filters:
+            - StripPrefix=1
+        # 行情服务
+        - id: quote-service
+          uri: lb://quote-service
+          predicates:
+            - Path=/api/quote/**
+          filters:
+            - StripPrefix=1
+    # Spring Cloud LoadBalancer 閰嶇疆
     loadbalancer:
       ribbon:
         enabled: false
@@ -109,3 +130,21 @@ logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.cloud.loadbalancer: DEBUG
+
+# Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: gateway
+    description: API 缃戝叧鏈嶅姟

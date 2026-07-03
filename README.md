@@ -68,7 +68,7 @@ trade-system/
 │       ├── service/AccountService.java
 │       ├── entity/Account.java
 │       └── mapper/AccountMapper.java
-└── product-service/             # 商品服务 (端口: 9005)
+├── product-service/             # 商品服务 (端口: 9005)
     └── src/main/java/com/trade/product/
         ├── controller/ProductController.java
         ├── service/ProductService.java
@@ -76,7 +76,7 @@ trade-system/
         ├── mapper/ProductMapper.java
         └── feign/ProductFeignClient.java    # 对外暴露商品查询接口
         └── feign/fallback/ProductFeignFallbackFactory.java  # Feign 降级
-└── search-service/              # 搜索服务 (端口: 9006)
+├── search-service/              # 搜索服务 (端口: 9006)
     └── src/main/java/com/trade/search/
         ├── controller/SearchController.java  # 搜索接口
         ├── service/
@@ -93,7 +93,50 @@ trade-system/
         └── dto/
             ├── SearchRequest.java              # 搜索请求
             └── SearchResponse.java              # 搜索响应
+├── ai-service/                  # AI 智能服务 (端口: 9007)
+│   ├── src/main/resources/db/migration/
+│   │   └── V1__init_schema.sql      # 知识库表初始化（由 product-service 管理，此处仅参考）
+│   └── src/main/java/com/trade/ai/
+│       ├── controller/RagController.java            # RAG 问答接口
+│       ├── service/
+│       │   ├── RagChatService.java           # RAG 问答服务（Spring AI ChatClient）
+│       │   ├── DocumentIngestService.java    # 文档向量化入库服务
+│       │   └── RerankerService.java          # 重排序服务（Cross-Encoder）
+│       ├── retriever/HybridRetriever.java     # 混合检索（向量+BM25+RRF）
+│       ├── splitter/SemanticDocumentSplitter.java  # 语义分段器
+│       ├── config/
+│       │   ├── EmbeddingConfig.java           # Embedding 模型配置（SiliconFlow）
+│       │   ├── ElasticsearchVectorStoreConfig.java  # ES 向量存储配置
+│       │   └── ElasticsearchConfig.java       # ES REST 客户端配置
+│       ├── feign/KnowledgeBaseRestClient.java  # 回调 product-service 更新向量化状态
+│       └── dto/
+│           ├── RagRequest.java                # RAG 问答请求
+│           └── RagResponse.java               # RAG 问答响应
+├── start-scripts/              # 本地微服务启动脚本（带 SkyWalking Agent）
+│   ├── start-all.bat           # Windows 一键启动所有微服务
+│   └── start-all.sh            # Linux/Mac 一键启动
+├── docker-scripts/              # Docker 微服务启动脚本
+│   ├── docker-start-all.sh      # Linux/Mac Docker 容器一键启动
+│   └── docker-start-all.ps1    # Windows PowerShell Docker 容器一键启动
+└── .github/workflows/
+    └── ci.yml                   # CI 配置（编译 + Flyway 迁移验证）
 ```
+
+### 项目结构说明
+
+| 目录/文件 | 说明 |
+|-----------|------|
+| `sql/` | 数据库建表脚本（已迁移至 Flyway，此处仅保留参考） |
+| `nacos-config/` | Nacos 共享配置文件 + 上传脚本（shared-common/sentinel/xxljob） |
+| `seata-config/` | Seata Server Nacos 配置脚本（upload-seata-config.ps1） |
+| `docker/` | Docker Compose 中间件编排（MySQL/Redis/RabbitMQ/Nacos/Seata/SkyWalking 等） |
+| `start-scripts/` | 本地微服务启动脚本（带 SkyWalking Agent） |
+| `docker-scripts/` | Docker 微服务容器化启动脚本 |
+| `docs/` | 开发文档（Seata 联调指南等） |
+| `common/` | 公共模块（R.java、BizCode、BusinessException、RedisConfig 等） |
+| `.github/workflows/` | CI 配置（编译 + Flyway 迁移验证） |
+
+> **注意**：各服务数据库脚本已迁移至 `src/main/resources/db/migration/`（Flyway 管理），`sql/` 目录仅作历史参考。
 
 ## 🛠️ 技术栈
 
@@ -112,8 +155,11 @@ trade-system/
 | SkyWalking | 10.4.0 | 链路追踪 |
 | MyBatis-Plus | 3.5.9 | ORM框架 |
 | Redis | 7.x | 缓存/会话存储 |
-| Elasticsearch | 8.x | 全文搜索引擎 |
+| Elasticsearch | 8.x | 全文搜索 + 向量存储 |
 | IK Analyzer | 8.12.0 | 中文分词器 |
+| Spring AI | 1.0.0 | AI/LLM 统一调用框架（AI 服务胶水层） |
+| LangChain4j | 0.36.0 | RAG 检索增强生成（Embedding/Retriever/VectorStore） |
+| Flyway | 10.15.2 | 数据库版本管理（Migration） |
 | Lombok | 1.18.40 | 简化代码 |
 | Swagger/OpenAPI | 3.0 | 接口文档 |
 | ShardingSphere | 5.x | 分库分表（预留方案，待数据量达阈值后启用） |
@@ -187,32 +233,18 @@ bash docker-start-all.sh
 | Elasticsearch | http://localhost:9200 | 搜索引擎 |
 | Kibana | http://localhost:5601 | ES 可视化（汉化） |
 
-### 方式二：本地中间件部署
-
-```
-1. MySQL        Windows 服务自动启动（端口 3306）
-2. Redis        Windows 服务自动启动（端口 6379）
-3. RabbitMQ     Windows 服务自动启动（端口 5672，控制台 15672）
-4. Nacos        D:\nacos\bin\startup.cmd -m standalone (端口 8848)
-5. Seata        D:\seata\seata-server.bat (端口 8091)
-6. Sentinel     D:\sentinel\start_sentinel.bat (端口 8858）
-7. XXL-JOB      D:\xxl-job\start_xxl_job.bat (端口 8081)
-8. SkyWalking   D:\skywalking-apm\bin\startup.bat (UI端口 8088)
-
-微服务：trade-system/start-scripts/start-all.bat
-```
-
 **微服务端口：**
 | 服务 | 端口 | 说明 |
 |------|------|------|
-| gateway | 9000 | 网关入口 |
+| gateway | 9000 | 网关入口（鉴权/路由） |
 | user-service | 9001 | 用户服务 |
 | order-service | 9002 | 订单服务 |
 | trade-service | 9003 | 交易/持仓服务 |
 | account-service | 9004 | 账户服务 |
 | product-service | 9005 | 商品服务 |
 | search-service | 9006 | 搜索服务（ES） |
-| search-service XXL-JOB | 9007 | XXL-JOB 执行器端口 |
+| ai-service | 9007 | AI 智能服务（RAG 问答） |
+| search-service XXL-JOB | 9008 | XXL-JOB 执行器端口 |
 
 ## 📝 数据库设计
 
@@ -231,11 +263,21 @@ bash docker-start-all.sh
 │ undo_log    │───────┘ 支付/退款             │
 └─────────────┘                              │
                                               │
-┌─────────────┐       ┌─────────────┐         │
-│trade_product│       │ Seata TC    │◄────────┘
-├─────────────┤       │ (事务协调)  │   分布式事务
-│ t_product   │       └─────────────┘
-└─────────────┘
+┌──────────────────┐  ┌─────────────┐         │
+│ trade_product    │  │ Seata TC    │◄────────┘
+├──────────────────┤  │ (事务协调)  │   分布式事务
+│ t_product        │  └─────────────┘
+│ t_knowledge_base │     ↑
+└──────────────────┘     │ 不参与分布式事务
+         │               │ (seata.enabled: false)
+         │ 向量化后写入 ES
+         ↓
+┌──────────────────┐
+│ Elasticsearch    │
+├──────────────────┤
+│ product (索引)    │  ← 商品搜索（search-service）
+│ product_knowledge│  ← 知识库向量+BM25（ai-service RAG）
+└──────────────────┘
 ```
 
 ### 表结构说明
@@ -248,6 +290,14 @@ bash docker-start-all.sh
 | trade_trade | t_trade | 交易记录 |
 | trade_trade | t_position | 持仓记录 |
 | trade_product | t_product | 商品/股票 |
+| trade_product | t_knowledge_base | 知识库文档（标题/内容/向量化状态） |
+
+### ES 索引设计
+
+| 索引名 | 用途 | 核心字段 |
+|--------|------|---------|
+| `product` | 商品搜索（search-service） | `productCode`, `productName`(ik分词), `price`, `status` |
+| `product_knowledge` | RAG 知识库（ai-service） | `text`(ik分词), `vector`(dense_vector 1024 dims cosine), `metadata` |
 
 ### 核心字段设计
 
@@ -264,6 +314,11 @@ status     INT  -- 1:待支付 2:已支付 3:已完成 4:已取消
 quantity    INT           -- 持有数量
 avg_cost    DECIMAL(18,2)-- 平均成本价
 current_price DECIMAL     -- 当前价格
+
+-- 知识库表：文档存储 + 向量化状态
+title         VARCHAR     -- 文档标题
+content       TEXT        -- 文档内容（原始文本）
+vector_status INT         -- 向量化状态（0:未向量化 1:已向量化）
 
 -- 所有表：乐观锁 + 逻辑删除
 version  INT  -- 乐观锁版本号
@@ -334,6 +389,16 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 | `/api/search/index/full` | POST | 全量同步（MySQL → ES） |
 | `/api/search/index/incremental` | POST | 增量同步（MySQL → ES） |
 
+### AI 智能服务（RAG 知识库）
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/ai/rag` | POST | RAG 知识库问答（混合检索 + Reranker + LLM 生成） |
+| `/api/ai/rag/ingest` | POST | 文档向量化入库（遍历未向量化文档，调用 Embedding API 写入 ES） |
+| `/api/ai/rag/ingest/{id}` | POST | 向量化指定文档 |
+| `/api/ai/rag/status` | GET | 查询向量化状态（已向量化数量 / 总数） |
+
+> **注意**：`/api/ai/rag` 已加入 Gateway 白名单，无需登录即可访问（方便演示）。
+
 ## 🔥 业务流程
 
 ### 买入流程（分布式事务）
@@ -357,10 +422,36 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 已支付订单 → 退款到账户 → 退款交易 → 更新订单
 ```
 
+### RAG 知识库问答流程
+
+**文档入库流程：**
+```
+知识库文档(MySQL) → 读取未向量化记录 → 语义分段(SemanticSplitter)
+     → Embedding API(SiliconFlow bge-large-zh) → 写入 ES(product_knowledge 索引)
+     → 回调 product-service 更新 vector_status=1
+```
+
+**RAG 问答流程：**
+```
+用户提问 → HybridRetriever 混合检索
+              ├── 向量检索(ES dense_vector cosine)
+              └── BM25 关键词检索(ES ik_smart)
+                    ↓
+              RRF 融合排序(k=60)
+                    ↓
+              Reranker 重排序(bge-reranker-large Cross-Encoder)
+                    ↓
+              取 Top-N 文档 → Spring AI ChatClient → LLM 生成回答
+```
+
+**降级策略：**
+- Reranker 不可用（API Key 未配置或调用失败）→ 直接使用 RRF 融合结果
+- Embedding API 不可用 → 文档入库失败，保留 `vector_status=0`
+
 ## ✨ 核心亮点
 
 ### 1. 微服务架构
-- **6 个微服务**：Gateway + User + Order + Trade + Account + Product
+- **8 个服务节点**：Gateway + User + Order + Trade + Account + Product + Search + AI
 - **Nacos 服务注册发现**：自动注册、健康检查
 - **Nacos 配置中心**：shared-configs 共享配置
 
@@ -426,7 +517,7 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
   ```
 - **一键启动**：start-scripts/start-all.bat 自动加载 Agent
 
-### 9. MQ 实时数据同步
+### 10. MQ 实时数据同步
 - **商品变更实时同步**：product-service 增删改商品时发送 MQ 消息
 - **search-service 消费**：监听商品同步队列，实时更新 ES 索引
 - **支持操作**：新增(CREATE)、修改(UPDATE)、删除(DELETE)、上架(ONLINE)、下架(OFFLINE)
@@ -435,6 +526,44 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
   - CREATE：直接用 MQ 消息数据创建 ES 文档
   - UPDATE/ONLINE/OFFLINE：**先通过 Feign 查询 product-service 获取数据库最新数据**，再更新 ES
   - DELETE：直接用 productId 删除 ES 文档
+
+### 11. RAG 知识库问答系统（ai-service）
+- **混血架构**：Spring AI（胶水层，ChatClient 统一调用）+ LangChain4j（主力层，Embedding/VectorStore/Retriever）
+- **向量存储**：Elasticsearch `product_knowledge` 索引（dense_vector 1024 dims, cosine）
+- **Embedding 模型**：SiliconFlow `BAAI/bge-large-zh-v1.5`（1024 维）
+- **语义分段**：SemanticDocumentSplitter（语义切分 + 固定窗口 + 15% 重叠）
+- **混合检索**：向量检索 + BM25 关键词检索，RRF（k=60）融合排序
+- **重排序（Reranker）**：SiliconFlow `BAAI/bge-reranker-large` Cross-Encoder，对 RRF 候选文档重排序后送入 LLM
+- **Spring AI Observability**：Micrometer Observation + Prometheus Metrics 暴露
+- **API 接口**：`POST /api/ai/rag`（Gateway 已配置白名单放行）
+
+### 12. Flyway 数据库版本管理
+- **统一迁移**：各微服务独立管理 `db/migration/` 脚本（V1 → V2 → V3 → ...）
+- **版本追溯**：Flyway `flyway_schema_history` 表记录每次迁移记录
+- **CI 集成**：`.github/workflows/ci.yml` 实现 push/PR 自动编译 + Flyway 迁移验证
+- **脚本规范**：
+  - V1：建表 + undo_log（Seata 必需）+ 基础结构
+  - V2：结构变更（加字段/索引）
+  - V3：模拟数据（knowledge_base 等）
+  - V4：知识库文档插入（product-service）
+- **多服务隔离**：search-service 共享 trade_product 库，使用独立 history 表（`flyway_schema_history_search`）
+
+### 迁移脚本版本清单
+
+| 服务 | 版本 | 脚本 | 说明 |
+|------|------|------|------|
+| user-service | V1 | `V1__init_schema.sql` | t_user 建表 |
+| order-service | V1 | `V1__init_schema.sql` | t_order 建表 + undo_log |
+| order-service | V2 | `V2__alter_order.sql` | 订单表结构变更 |
+| trade-service | V1 | `V1__init_schema.sql` | t_trade + t_position 建表 + undo_log |
+| trade-service | V2 | `V2__alter_trade.sql` | 交易表结构变更 |
+| account-service | V1 | `V1__init_schema.sql` | t_account 建表 + undo_log |
+| account-service | V2 | `V2__alter_account.sql` | 账户表结构变更 |
+| product-service | V1 | `V1__init_schema.sql` | t_product 建表 |
+| product-service | V2 | `V2__alter_product.sql` | 商品表结构变更 |
+| product-service | V3 | `V3__add_knowledge_base.sql` | t_knowledge_base 建表 + 模拟数据 |
+| product-service | V4 | `V4__insert_knowledge_base.sql` | 知识库文档插入（10 篇） |
+| search-service | V1 | `V1__init_schema.sql` | 共享 trade_product 库（独立 history 表） |
 
 ## 📞 后续优化方向
 
@@ -451,6 +580,9 @@ deleted  INT  -- 逻辑删除（0未删除 1已删除）
 | **XXL-JOB 任务调度** | 订单超时检测（每分钟扫描，30分钟自动取消）+ Web 可视化管理 | 2026-04-26 |
 | **MQ 实时数据同步** | product-service 商品变更 → MQ → search-service 实时同步 ES | 2026-04-27 |
 | **Elasticsearch 搜索服务** | 基于 ES + IK 中文分词器的商品搜索服务，支持关键词搜索、多条件过滤、排序分页、XXL-JOB 定时同步、MQ 实时同步 | 2026-04-27 |
+| **Flyway 数据库版本管理** | 各微服务接入 Flyway 10.15.2，统一管理 V1~V4 迁移脚本，CI 集成自动迁移验证 | 2026-05-03 |
+| **RAG 知识库问答系统** | ai-service 接入 Spring AI + LangChain4j，实现混合检索（向量+BM25+RRF）+ Reranker 重排序的 RAG 问答 | 2026-05-04 |
+| **RAG 向量化修复** | 修复 Embedding API 路径（需含 /v1）、RestTemplate PATCH→POST、deleted 字段逻辑，id 1-5 成功向量化 | 2026-05-05 |
 
 ### 🟢 低优先级（锦上添花）
 
@@ -579,10 +711,15 @@ CREATE TABLE t_order_3 LIKE t_order;
 ## 📞 联系方式
 
 项目用于简历展示，涵盖微服务核心知识点：
-- 服务治理（注册发现、负载均衡）
+- 服务治理（注册发现、负载均衡、网关鉴权）
 - 分布式事务（Seata AT 模式）
 - 流量防护（Sentinel 熔断降级）
-- 异步解耦（RabbitMQ）
-- 缓存优化（Redis）
-- 任务调度（XXL-JOB）
+- 异步解耦（RabbitMQ 消息队列）
+- 缓存优化（Redis 缓存/幂等/会话）
+- 任务调度（XXL-JOB 定时任务）
 - 全文搜索（Elasticsearch + IK 分词）
+- 链路追踪（SkyWalking 分布式追踪）
+- RAG 问答系统（Spring AI + LangChain4j + ES 向量存储）
+- 数据库版本管理（Flyway Migration）
+- 容器化部署（Docker Compose 一键启动）
+- 数据库分库分表（ShardingSphere 方案预留）

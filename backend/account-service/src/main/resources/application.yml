@@ -1,5 +1,5 @@
-# account-service 本地配置
-# 公共配置已移至 Nacos: shared-common.yml, shared-sentinel.yml
+﻿# account-service 鏈湴閰嶇疆
+# 鍏叡閰嶇疆宸茬Щ鑷?Nacos: shared-common.yml, shared-sentinel.yml
 
 server:
   port: 9004
@@ -24,7 +24,7 @@ spring:
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/trade_account?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: root123
+    password: mysql123
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -35,12 +35,12 @@ spring:
   data:
     redis:
       database: 11
-      password: "123456"
+      password: "redis123"
 
 seata:
-  enabled: true  # 启用以支持分布式事务
+  enabled: true  # 鍚敤浠ユ敮鎸佸垎甯冨紡浜嬪姟
   tx-service-group: trade-system-group
-  # 配置中心使用 Nacos
+  # 閰嶇疆涓績浣跨敤 Nacos
   config:
     type: nacos
     nacos:
@@ -49,7 +49,7 @@ seata:
       username: nacos
       password: nacos
       data-id: seataServer.properties
-  # 注册中心使用 file 类型（直接使用本地 grouplist 配置，不走 Nacos 注册中心）
+  # 娉ㄥ唽涓績浣跨敤 file 绫诲瀷锛堢洿鎺ヤ娇鐢ㄦ湰鍦?grouplist 閰嶇疆锛屼笉璧?Nacos 娉ㄥ唽涓績锛?
   registry:
     type: file
     file:
@@ -57,10 +57,28 @@ seata:
   service:
     vgroupMapping:
       trade-system-group: default
-    # grouplist 的 key 是集群名(default)，不是事务组名
+    # grouplist 鐨?key 鏄泦缇ゅ悕(default)锛屼笉鏄簨鍔＄粍鍚?
     default:
       grouplist: 127.0.0.1:8091
 
 logging:
   level:
     com.trade.account: DEBUG
+
+# Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: account-service
+    description: 璐︽埛鏈嶅姟

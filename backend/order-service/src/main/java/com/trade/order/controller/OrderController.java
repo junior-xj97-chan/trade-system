@@ -88,5 +88,6 @@ public class OrderController {
         private java.math.BigDecimal price;
         private Integer quantity;
         private Integer direction; // 1:买入 2:卖出，默认买入
+        private Integer source;    // 1:普通订单 2:秒杀订单
     }
 }

@@ -84,6 +84,7 @@ public class OrderService {
         order.setAmount(request.getPrice().multiply(new BigDecimal(request.getQuantity())));
         // direction: 1=买入（默认）, 2=卖出
         order.setDirection(request.getDirection() != null ? request.getDirection() : 1);
+        order.setSource(request.getSource() != null ? request.getSource() : 1);
         order.setStatus(1); // 待支付
         order.setCreateTime(LocalDateTime.now());
         order.setUpdateTime(LocalDateTime.now());

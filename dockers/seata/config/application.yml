@@ -1,0 +1,81 @@
+﻿# ================================================================
+# Seata Server 2.x 閰嶇疆
+# 娉ㄥ唽涓績: Nacos锛堢幆澧冨彉閲忚鐩栵級
+# 瀛樺偍妯″紡: DB (MySQL)锛堢幆澧冨彉閲忚鐩栵級
+# ================================================================
+spring:
+  application:
+    name: seata-server
+
+logging:
+  config: classpath:logback-spring.xml
+  file:
+    path: ${log.home:./logs}/seata-server
+
+console:
+  user:
+    username: seata
+    password: seata
+
+seata:
+  config:
+    type: nacos
+    nacos:
+      server-addr: 172.20.0.13:8848
+      namespace: ""
+      group: DEFAULT_GROUP
+      username: nacos
+      password: nacos
+      data-id: seataServer.properties
+
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: 172.20.0.13:8848
+      group: DEFAULT_GROUP
+      namespace: ""
+      username: nacos
+      password: nacos
+      # 鍏抽敭锛氬悜 Nacos 娉ㄥ唽鏃朵笂鎶ュ涓绘満 IP锛屽惁鍒欐敞鍐屽鍣?IP 瀵艰嚧澶栭儴鏃犳硶璁块棶
+      ip: 127.0.0.1
+      port: 8091
+
+  store:
+    mode: db
+    db:
+      datasource: druid
+      dbType: mysql
+      driverClassName: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://172.20.0.10:3306/seata?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      user: root
+      password: mysql123
+      min-conn: 10
+      max-conn: 100
+      global-table: global_table
+      branch-table: branch_table
+      lock-table: lock_table
+      distributed-lock-table: distributed_lock
+      query-limit: 1000
+      max-wait: 5000
+
+  server:
+    service-port: 8091
+    max-commit-retry-timeout: -1
+    max-rollback-retry-timeout: -1
+    rollback-retry-timeout-unlock-enable: false
+    enable-check-auth: true
+    enable-parallel-request-handle: true
+    retry-dead-threshold: 130000
+    xaer-nota-retry-timeout: 60000
+    recovery:
+      committing-retry-period: 1000
+      async-committing-retry-period: 1000
+      rollbacking-retry-period: 1000
+      timeout-retry-period: 1000
+
+  security:
+    secretKey: SeataSecretKey0c382ef121d778043159209298085776
+    tokenValidityInMilliseconds: 1800000
+    ignore:
+      urls: /,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.ico,/console-fe/public/**,/api/v1/auth/login

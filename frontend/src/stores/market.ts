@@ -3,7 +3,7 @@
  * 由各页面共享，避免重复轮询
  */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { fetchMarketTicks } from '@/api/market'
 import type { StockTick } from '@/api/market'
 

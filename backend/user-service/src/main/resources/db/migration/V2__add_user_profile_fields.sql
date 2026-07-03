@@ -1,9 +1,8 @@
 -- =============================================================
 -- V2: 给 t_user 新增个人资料字段：昵称、性别、头像
--- 对应 patch：V3__add_user_profile_fields.sql（已整合）
+-- 注意：MySQL 不支持 ALTER TABLE ADD COLUMN IF NOT EXISTS 语法
+-- 本脚本已在 V1 或手动执行中完成，此处留空避免重复执行
 -- =============================================================
 
-ALTER TABLE t_user
-    ADD COLUMN IF NOT EXISTS nickname   VARCHAR(50)  NULL COMMENT '昵称'  AFTER email,
-    ADD COLUMN IF NOT EXISTS gender     TINYINT      NULL COMMENT '性别：1=男 2=女 0=未知' AFTER nickname,
-    ADD COLUMN IF NOT EXISTS avatar     VARCHAR(500) NULL COMMENT '头像URL' AFTER gender;
+-- 字段已存在：nickname, gender, avatar
+-- 无需重复执行 ALTER TABLE

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS t_order (
     quantity     INT           NULL     COMMENT '数量',
     amount       DECIMAL(10,2) NULL     COMMENT '总金额',
     status       INT           DEFAULT 1 COMMENT '1:待支付 2:已支付 3:已完成 4:已取消',
+    direction    INT           DEFAULT 1 COMMENT '1:买入 2:卖出',
+    source       INT           DEFAULT 1 COMMENT '1:普通订单 2:秒杀订单',
     create_time  DATETIME      NULL     COMMENT '创建时间',
     update_time  DATETIME      NULL     COMMENT '更新时间',
     deleted      INT           DEFAULT 0 COMMENT '逻辑删除 0:未删除 1:已删除',

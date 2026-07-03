@@ -1,4 +1,4 @@
-name: CI - Build & DB Migration
+﻿name: CI - Build & DB Migration
 
 on:
   push:
@@ -9,17 +9,17 @@ on:
     branches: [ master, main ]
     paths:
       - 'backend/**'
-  workflow_dispatch:   # 允许手动触发
+  workflow_dispatch:   # 鍏佽鎵嬪姩瑙﹀彂
 
 env:
   JAVA_VERSION: '21'
-  MYSQL_ROOT_PASSWORD: root123
+  MYSQL_ROOT_PASSWORD: mysql123
   MYSQL_HOST: 127.0.0.1
   MYSQL_PORT: 3306
 
 jobs:
   # -------------------------------------------------------
-  # Job 1: 编译所有微服务
+  # Job 1: 缂栬瘧鎵€鏈夊井鏈嶅姟
   # -------------------------------------------------------
   build:
     name: Build Backend
@@ -48,15 +48,13 @@ jobs:
           retention-days: 3
 
   # -------------------------------------------------------
-  # Job 2: 数据库迁移（Flyway）
-  # 依赖 build 成功后执行
-  # -------------------------------------------------------
+  # Job 2: 鏁版嵁搴撹縼绉伙紙Flyway锛?  # 渚濊禆 build 鎴愬姛鍚庢墽琛?  # -------------------------------------------------------
   db-migrate:
     name: DB Migration (Flyway)
     runs-on: ubuntu-latest
     needs: build
 
-    # 启动 MySQL 服务容器
+    # 鍚姩 MySQL 鏈嶅姟瀹瑰櫒
     services:
       mysql:
         image: mysql:8.0

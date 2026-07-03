@@ -184,8 +184,7 @@ function beforeAvatarUpload(file: File) {
 async function handleAvatarUpload(options: { file: File }) {
   uploading.value = true
   try {
-    const res = await userApi.uploadAvatar(options.file)
-    const avatarPath = res.data
+    await userApi.uploadAvatar(options.file)
     // 重新拉取完整资料同步 store
     await userStore.fetchProfile()
     ElMessage.success('头像上传成功')

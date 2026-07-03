@@ -24,10 +24,13 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 3000,
+    strictPort: false,
+    historyApiFallback: true, // 支持 Vue Router history 模式
     // 开发阶段代理到后端
     proxy: {
       // 所有 /api 开头的请求统一转发到 Gateway（9000）
+      // Gateway 再根据路径路由到各微服务（包括 ai-service）
       '/api': {
         target: 'http://127.0.0.1:9000',
         changeOrigin: true,

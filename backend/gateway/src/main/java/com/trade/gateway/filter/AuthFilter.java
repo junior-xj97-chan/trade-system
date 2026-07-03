@@ -48,10 +48,15 @@ public class AuthFilter implements GlobalFilter, Ordered {
         "/api/user/login",           // 登录
         "/api/user/register",        // 注册
         "/api/user/sendCode",        // 发送验证码
+        "/api/ai/chat",             // AI 对话（免登录）
+        "/api/ai/models",            // AI 模型列表（免登录）
+        "/api/ai/sessions",         // AI 会话列表（免登录）
+        "/api/ai/rag",              // RAG 问答（免登录）
+        "/actuator",                 // Actuator 健康检查（内部探针，统一放行）
         "/doc.html",                 // Swagger 文档
-        "/v3/api-docs",               // OpenAPI 文档
+        "/v3/api-docs",             // OpenAPI 文档
         "/swagger-ui",               // Swagger UI
-        "/favicon.ico"               // 网站图标
+        "/favicon.ico"              // 网站图标
     );
 
     @Override

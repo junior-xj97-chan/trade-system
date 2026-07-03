@@ -1,0 +1,20 @@
+spring:
+  cloud:
+    bootstrap:
+      enabled: true
+    nacos:
+      username: nacos
+      password: nacos
+      discovery:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        fail-fast: false
+        enabled: true
+      config:
+        server-addr: 127.0.0.1:8848
+        group: DEFAULT_GROUP
+        file-extension: yml
+        fail-fast: false
+
+application:
+  name: quote-service
