@@ -60,6 +60,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/profile/ProfileView.vue'),
         meta: { title: '个人中心', icon: 'User' },
       },
+      
     ],
   },
 ]
