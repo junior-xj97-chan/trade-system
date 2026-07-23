@@ -28,8 +28,6 @@
         <module>trade-service</module>
         <module>account-service</module>
         <module>product-service</module>
-        <module>seckill-service</module>
-        <module>quote-service</module>
     </modules>
 
     <properties>

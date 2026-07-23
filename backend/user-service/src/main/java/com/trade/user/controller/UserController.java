@@ -85,6 +85,12 @@ public class UserController {
         return R.ok();
     }
 
+    @PostMapping("/refresh")
+    @Operation(summary = "刷新 Token")
+    public R<UserService.LoginResp> refreshToken(@RequestBody RefreshTokenRequest request) {
+        return R.ok(userService.refreshToken(request.getRefreshToken()));
+    }
+
     @PostMapping("/avatar")
     @Operation(summary = "上传头像")
     public R<String> uploadAvatar(@RequestHeader(value = "Authorization", required = false) String token,
@@ -109,5 +115,10 @@ public class UserController {
     public static class LoginRequest {
         private String username;
         private String password;
+    }
+
+    @Data
+    public static class RefreshTokenRequest {
+        private String refreshToken;
     }
 }

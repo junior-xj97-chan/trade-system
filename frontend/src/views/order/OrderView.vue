@@ -180,12 +180,17 @@ async function loadData() {
 
 async function handlePay(order: Order) {
   try {
-    await orderApi.pay(order.id)
-    ElMessage.success('支付成功')
+    if (order.direction === 2) {
+      await orderApi.sell(order.id)
+      ElMessage.success('卖出成功')
+    } else {
+      await orderApi.pay(order.id)
+      ElMessage.success('支付成功')
+    }
     loadData()
   } catch (err: any) {
-    console.error('【支付失败】orderId=', order.id, err)
-    ElMessage.error(err?.response?.data?.message || err?.message || '支付失败，请重试')
+    console.error('【操作失败】orderId=', order.id, err)
+    ElMessage.error(err?.response?.data?.message || err?.message || '操作失败，请重试')
   }
 }
 

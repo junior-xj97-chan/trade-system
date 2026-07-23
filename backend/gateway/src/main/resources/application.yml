@@ -1,5 +1,5 @@
-﻿# gateway 鏈湴閰嶇疆
-# 鍏叡閰嶇疆宸茬Щ鑷?Nacos: shared-common.yml, shared-sentinel.yml
+# gateway 本地配置
+# 公共配置已迁移至 Nacos: shared-common.yml
 
 server:
   port: 9000
@@ -20,6 +20,8 @@ spring:
     include-message: always
   data:
     redis:
+      host: redis
+      port: 6379
       database: 0
       password: "redis123"
   cloud:
@@ -29,20 +31,17 @@ spring:
     # Nacos 鏈嶅姟鍙戠幇閰嶇疆
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         fail-fast: false
         enabled: true
       config:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         file-extension: yml
         fail-fast: false
         shared-configs:
           - data-id: shared-common.yml
-            group: SHARED_GROUP
-            refresh: true
-          - data-id: shared-sentinel.yml
             group: SHARED_GROUP
             refresh: true
     gateway:
@@ -86,47 +85,14 @@ spring:
             - Path=/api/product/**
           filters:
             - StripPrefix=1
-        # 鎼滅储鏈嶅姟锛圗S锛?
-        - id: search-service
-          uri: lb://search-service
-          predicates:
-            - Path=/api/search/**
-          filters:
-            - StripPrefix=1
-        # AI 鏅鸿兘鏈嶅姟
-        - id: ai-service
-          uri: lb://ai-service
-          predicates:
-            - Path=/api/ai/**
-          filters:
-            - StripPrefix=1
-        # 秒杀服务
-        - id: seckill-service
-          uri: lb://seckill-service
-          predicates:
-            - Path=/api/seckill/**
-          filters:
-            - StripPrefix=1
-        # 行情服务
-        - id: quote-service
-          uri: lb://quote-service
-          predicates:
-            - Path=/api/quote/**
-          filters:
-            - StripPrefix=1
-        # 行情服务
-        - id: quote-service
-          uri: lb://quote-service
-          predicates:
-            - Path=/api/quote/**
-          filters:
-            - StripPrefix=1
     # Spring Cloud LoadBalancer 閰嶇疆
     loadbalancer:
       ribbon:
         enabled: false
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId}] %-5level %logger{36} - %msg%n"
   level:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.cloud.loadbalancer: DEBUG

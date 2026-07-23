@@ -3,14 +3,11 @@ package com.trade.product.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.trade.common.config.RabbitMQConfig;
-import com.trade.common.mq.ProductSyncMessage;
 import com.trade.product.entity.Product;
 import com.trade.product.mapper.ProductMapper;
 import com.trade.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,8 +29,6 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     private final ProductMapper productMapper;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final RabbitTemplate rabbitTemplate;
-
     private static final String REDIS_KEY_PREFIX = "trade:product:";
 
     @Override
@@ -66,9 +61,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     public boolean save(Product product) {
         boolean success = super.save(product);
         if (success) {
-            // 发送 MQ 同步消息
-            sendSyncMessage(product, ProductSyncMessage.OperationType.CREATE);
-            log.info("【MQ发送】商品新增同步消息，productId={}, productCode={}", product.getId(), product.getProductCode());
+            log.info("【商品新增】productId={}, productCode={}", product.getId(), product.getProductCode());
         }
         return success;
     }
@@ -81,9 +74,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             // 清除缓存
             String redisKey = REDIS_KEY_PREFIX + product.getProductCode();
             redisTemplate.delete(redisKey);
-            // 发送 MQ 同步消息
-            sendSyncMessage(product, ProductSyncMessage.OperationType.UPDATE);
-            log.info("【MQ发送】商品修改同步消息，productId={}, productCode={}", product.getId(), product.getProductCode());
+            log.info("【商品修改】productId={}, productCode={}", product.getId(), product.getProductCode());
         }
         return success;
     }
@@ -100,9 +91,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             // 清除缓存
             String redisKey = REDIS_KEY_PREFIX + product.getProductCode();
             redisTemplate.delete(redisKey);
-            // 发送 MQ 同步消息
-            sendSyncMessage(product, ProductSyncMessage.OperationType.DELETE);
-            log.info("【MQ发送】商品删除同步消息，productId={}, productCode={}", productId, product.getProductCode());
+            log.info("【商品删除】productId={}, productCode={}", productId, product.getProductCode());
         }
         return success;
     }
@@ -122,9 +111,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             // 更新缓存
             String redisKey = REDIS_KEY_PREFIX + product.getProductCode();
             redisTemplate.delete(redisKey);
-            // 发送 MQ 同步消息
-            sendSyncMessage(product, ProductSyncMessage.OperationType.UPDATE);
-            log.info("【MQ发送】商品价格更新同步消息，productId={}, newPrice={}", productId, newPrice);
+            log.info("【商品价格更新】productId={}, newPrice={}", productId, newPrice);
             return true;
         }
         return false;
@@ -175,41 +162,10 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             // 清除缓存
             String redisKey = REDIS_KEY_PREFIX + product.getProductCode();
             redisTemplate.delete(redisKey);
-            // 发送 MQ 同步消息
-            ProductSyncMessage.OperationType type = targetStatus == 1 
-                    ? ProductSyncMessage.OperationType.ONLINE 
-                    : ProductSyncMessage.OperationType.OFFLINE;
-            sendSyncMessage(product, type);
-            log.info("【MQ发送】商品上下架同步消息，productId={}, status={}", productId, targetStatus);
+            log.info("【商品状态更新】productId={}, status={}", productId, targetStatus);
             return true;
         }
         return false;
-    }
-
-    /**
-     * 发送商品同步消息到 MQ
-     */
-    private void sendSyncMessage(Product product, ProductSyncMessage.OperationType type) {
-        try {
-            ProductSyncMessage message = ProductSyncMessage.builder()
-                    .operationType(type)
-                    .productId(product.getId())
-                    .productCode(product.getProductCode())
-                    .productName(product.getProductName())
-                    .currentPrice(product.getCurrentPrice())
-                    .productType(product.getCategory())
-                    .exchangeCode(extractExchange(product.getProductCode()))
-                    .status(product.getStatus())
-                    .operateTime(LocalDateTime.now())
-                    .build();
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.TRADE_EXCHANGE,
-                    RabbitMQConfig.PRODUCT_SYNC_KEY,
-                    message
-            );
-        } catch (Exception e) {
-            log.error("【MQ发送失败】商品同步消息发送异常，productId={}, type={}", product.getId(), type, e);
-        }
     }
 
     /**

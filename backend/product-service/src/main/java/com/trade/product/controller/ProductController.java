@@ -1,7 +1,6 @@
 package com.trade.product.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.trade.common.R;
 import com.trade.common.entity.ProductDTO;
 import com.trade.product.entity.Product;
@@ -91,7 +90,6 @@ public class ProductController {
     /**
      * 根据商品代码查询
      */
-    @SentinelResource("product:getByCode")
     @GetMapping("/code/{productCode}")
     @Operation(summary = "根据商品代码查询")
     public R<ProductDTO> getByCode(@PathVariable String productCode) {
@@ -121,7 +119,6 @@ public class ProductController {
     /**
      * 分页查询商品列表
      */
-    @SentinelResource("product:page")
     @GetMapping("/page")
     @Operation(summary = "分页查询商品列表")
     public R<Page<Product>> page(

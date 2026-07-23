@@ -12,24 +12,20 @@ spring:
       password: nacos
       # 服务发现配置
       discovery:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         fail-fast: false
         enabled: true
       # 配置中心
       config:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         file-extension: yml
         fail-fast: false
-        # 暂时注释掉 shared-configs，避免配置覆盖问题
-        # shared-configs:
-        #   - data-id: shared-common.yml
-        #     group: SHARED_GROUP
-        #     refresh: true
-        #   - data-id: shared-sentinel.yml
-        #     group: SHARED_GROUP
-        #     refresh: true
+        shared-configs:
+          - data-id: shared-common.yml
+            group: SHARED_GROUP
+            refresh: true
 
 # 应用名称
 application:

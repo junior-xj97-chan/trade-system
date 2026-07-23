@@ -22,14 +22,10 @@ spring:
         group: DEFAULT_GROUP
         file-extension: yml
         fail-fast: false
-        # 暂时注释掉 shared-configs，避免配置覆盖问题
-        # shared-configs:
-        #   - data-id: shared-common.yml
-        #     group: SHARED_GROUP
-        #     refresh: true
-        #   - data-id: shared-sentinel.yml
-        #     group: SHARED_GROUP
-        #     refresh: true
+        shared-configs:
+          - data-id: shared-common.yml
+            group: SHARED_GROUP
+            refresh: true
 
 # 应用名称
 application:

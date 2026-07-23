@@ -48,10 +48,6 @@ public class AuthFilter implements GlobalFilter, Ordered {
         "/api/user/login",           // 登录
         "/api/user/register",        // 注册
         "/api/user/sendCode",        // 发送验证码
-        "/api/ai/chat",             // AI 对话（免登录）
-        "/api/ai/models",            // AI 模型列表（免登录）
-        "/api/ai/sessions",         // AI 会话列表（免登录）
-        "/api/ai/rag",              // RAG 问答（免登录）
         "/actuator",                 // Actuator 健康检查（内部探针，统一放行）
         "/doc.html",                 // Swagger 文档
         "/v3/api-docs",             // OpenAPI 文档
@@ -63,6 +59,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+
+        // 0. 剥离外部请求中的内部服务请求头，防止伪造
+        ServerHttpRequest.Builder requestBuilder = request.mutate();
+        requestBuilder.headers(headers -> headers.remove("X-Internal-Service"));
+        request = requestBuilder.build();
+        exchange = exchange.mutate().request(request).build();
 
         // 1. 白名单放行
         if (isWhiteList(path)) {

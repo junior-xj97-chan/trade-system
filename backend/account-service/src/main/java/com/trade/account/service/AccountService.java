@@ -8,6 +8,7 @@ import com.trade.account.mapper.AccountMapper;
 import com.trade.common.BizCode;
 import com.trade.common.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountService {
@@ -52,16 +54,21 @@ public class AccountService {
 
     /**
      * 冻结资金（支付时调用）
-     * Seata 会保证分布式事务一致性
+     *
+     * @param orderId 订单ID，作为幂等键业务流水号
      */
     @Transactional(rollbackFor = Exception.class)
-    public void freezeAmount(Long userId, BigDecimal amount) {
-        // ========== 幂等性检查：防止重复冻结 ==========
-        String idempotentKey = "account:freeze:" + userId + ":" + amount.toPlainString();
+    public void freezeAmount(Long userId, BigDecimal amount, Long orderId) {
+        // ========== 幂等性检查：基于业务流水号防止重复冻结 ==========
+        String idempotentKey = orderId != null
+                ? "account:freeze:" + orderId
+                : "account:freeze:" + userId + ":" + amount.toPlainString();
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            // 已处理过，幂等返回（不再抛异常，避免补偿重试失败）
+            log.info("【冻结资金-幂等命中】userId={}，orderId={}", userId, orderId);
+            return;
         }
 
         Account account = getByUserId(userId);
@@ -91,15 +98,20 @@ public class AccountService {
 
     /**
      * 解冻资金（退款时调用）
+     *
+     * @param orderId 订单ID，作为幂等键业务流水号
      */
     @Transactional(rollbackFor = Exception.class)
-    public void unfreezeAmount(Long userId, BigDecimal amount) {
-        // ========== 幂等性检查：防止重复解冻 ==========
-        String idempotentKey = "account:unfreeze:" + userId + ":" + amount.toPlainString();
+    public void unfreezeAmount(Long userId, BigDecimal amount, Long orderId) {
+        // ========== 幂等性检查：基于业务流水号防止重复解冻 ==========
+        String idempotentKey = orderId != null
+                ? "account:unfreeze:" + orderId
+                : "account:unfreeze:" + userId + ":" + amount.toPlainString();
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            log.info("【解冻资金-幂等命中】userId={}，orderId={}", userId, orderId);
+            return;
         }
 
         Account account = getByUserId(userId);
@@ -124,15 +136,20 @@ public class AccountService {
     /**
      * 扣减余额（实际支付时调用）
      * 从冻结金额中扣减，并减少余额
+     *
+     * @param orderId 订单ID，作为幂等键业务流水号
      */
     @Transactional(rollbackFor = Exception.class)
-    public void deductBalance(Long userId, BigDecimal amount) {
-        // ========== 幂等性检查：防止重复扣减 ==========
-        String idempotentKey = IDEMPOTENT_PREFIX + userId + ":" + amount.toPlainString();
+    public void deductBalance(Long userId, BigDecimal amount, Long orderId) {
+        // ========== 幂等性检查：基于业务流水号防止重复扣减 ==========
+        String idempotentKey = orderId != null
+                ? IDEMPOTENT_PREFIX + "deduct:" + orderId
+                : IDEMPOTENT_PREFIX + userId + ":" + amount.toPlainString();
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            log.info("【扣减余额-幂等命中】userId={}，orderId={}", userId, orderId);
+            return;
         }
 
         Account account = getByUserId(userId);
@@ -189,15 +206,20 @@ public class AccountService {
 
     /**
      * 退款（取消订单时调用）
+     *
+     * @param orderId 订单ID，作为幂等键业务流水号
      */
     @Transactional(rollbackFor = Exception.class)
-    public void refund(Long userId, BigDecimal amount) {
-        // ========== 幂等性检查：防止重复退款 ==========
-        String idempotentKey = "account:refund:" + userId + ":" + amount.toPlainString();
+    public void refund(Long userId, BigDecimal amount, Long orderId) {
+        // ========== 幂等性检查：基于业务流水号防止重复退款 ==========
+        String idempotentKey = orderId != null
+                ? "account:refund:" + orderId
+                : "account:refund:" + userId + ":" + amount.toPlainString();
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            log.info("【退款-幂等命中】userId={}，orderId={}", userId, orderId);
+            return;
         }
 
         Account account = getByUserId(userId);
@@ -219,15 +241,20 @@ public class AccountService {
     /**
      * 卖出收款（卖出订单支付时调用）
      * 卖出股票获得资金：增加用户余额
+     *
+     * @param orderId 订单ID，作为幂等键业务流水号
      */
     @Transactional(rollbackFor = Exception.class)
-    public void sellReceive(Long userId, BigDecimal amount) {
-        // ========== 幂等性检查：防止重复收款 ==========
-        String idempotentKey = "account:sellReceive:" + userId + ":" + amount.toPlainString();
+    public void sellReceive(Long userId, BigDecimal amount, Long orderId) {
+        // ========== 幂等性检查：基于业务流水号防止重复收款 ==========
+        String idempotentKey = orderId != null
+                ? "account:sellReceive:" + orderId
+                : "account:sellReceive:" + userId + ":" + amount.toPlainString();
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            log.info("【卖出收款-幂等命中】userId={}，orderId={}", userId, orderId);
+            return;
         }
 
         Account account = getByUserId(userId);
@@ -252,6 +279,20 @@ public class AccountService {
     public Account getByUserId(Long userId) {
         LambdaQueryWrapper<Account> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Account::getUserId, userId);
-        return accountMapper.selectOne(wrapper);
+        Account account = accountMapper.selectOne(wrapper);
+        
+        // 兜底逻辑：如果账户不存在，自动创建一个（初始余额为0）
+        if (account == null) {
+            account = new Account();
+            account.setUserId(userId);
+            account.setBalance(BigDecimal.ZERO);
+            account.setFrozenAmount(BigDecimal.ZERO);
+            account.setStatus(1);
+            account.setCreateTime(LocalDateTime.now());
+            account.setUpdateTime(LocalDateTime.now());
+            accountMapper.insert(account);
+        }
+        
+        return account;
     }
 }

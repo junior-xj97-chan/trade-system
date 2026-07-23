@@ -62,13 +62,14 @@ public class PositionService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void buy(Long orderId, Long userId, Long productId, String productName, String productCode, Integer quantity, BigDecimal price) {
-        // ========== 幂等性检查：一个订单只能触发一次建仓/加仓 ==========
+        // ========== 幂等性检查：基于业务流水号防止重复买入 ==========
         String idempotentKey = IDEMPOTENT_PREFIX + "buy:" + orderId;
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            log.warn("【买入持仓-幂等拦截】orderId={}，请求已处理", orderId);
-            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            // 幂等命中：已处理过，直接返回成功
+            log.info("【买入持仓-幂等命中】orderId={}，请求已处理", orderId);
+            return;
         }
 
         LambdaQueryWrapper<Position> wrapper = new LambdaQueryWrapper<>();
@@ -130,13 +131,14 @@ public class PositionService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void sell(Long orderId, Long userId, Long productId, Integer quantity, BigDecimal price) {
-        // ========== 幂等性检查：一个订单只能触发一次减仓 ==========
+        // ========== 幂等性检查：基于业务流水号防止重复卖出 ==========
         String idempotentKey = IDEMPOTENT_PREFIX + "sell:" + orderId;
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            log.warn("【卖出持仓-幂等拦截】orderId={}，请求已处理", orderId);
-            throw new BusinessException(BizCode.DUPLICATE_REQUEST);
+            // 幂等命中：已处理过，直接返回成功
+            log.info("【卖出持仓-幂等命中】orderId={}，请求已处理", orderId);
+            return;
         }
 
         LambdaQueryWrapper<Position> wrapper = new LambdaQueryWrapper<>();

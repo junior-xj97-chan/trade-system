@@ -1,1 +1,8 @@
-ALTER TABLE t_order ADD COLUMN source INT DEFAULT 1 COMMENT '1-普通订单 2-秒杀订单' AFTER status;
+-- =============================================================
+-- V3: t_order 表新增 source 字段（已在 V1 中创建）
+-- 注意：MySQL 不支持 ALTER TABLE ADD COLUMN IF NOT EXISTS 语法
+-- 本脚本已在 V1 中完成，此处留空避免重复执行
+-- =============================================================
+
+-- 字段已存在：source
+-- 无需重复执行 ALTER TABLE

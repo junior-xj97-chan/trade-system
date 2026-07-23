@@ -105,32 +105,4 @@ export interface PageReq {
   size?: number
 }
 
-// ========== 搜索 ==========
-// 后端 SearchRequest 字段
-export interface SearchReq {
-  keyword?: string
-  market?: string           // 市场代码：SH/SZ/HK/US
-  exchangeCode?: string     // 交易所代码（与 market 相同）
-  productType?: string      // 商品类型：stock/fund/bond/future
-  minPrice?: number
-  maxPrice?: number
-  sortField?: string        // 排序字段：price/changePercent
-  sortOrder?: 'asc' | 'desc'
-  sortBy?: string           // 排序简写：price_asc（会被解析为 sortField + sortOrder）
-  page?: number             // 页码（后端从0开始）
-  size?: number
-  pageSize?: number         // 每页大小（别名）
-}
 
-// 后端 SearchResponse 字段
-export interface SearchResp {
-  total: number
-  page: number
-  size: number
-  totalPages: number
-  hasNext: boolean
-  hasPrevious: boolean
-  products: Product[]        // 商品列表（兼容旧接口）
-  records: Product[]        // 商品列表（前端兼容）
-  took: number              // 搜索耗时(ms)
-}

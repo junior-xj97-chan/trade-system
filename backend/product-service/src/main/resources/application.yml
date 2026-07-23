@@ -1,5 +1,5 @@
-﻿# product-service 鏈湴閰嶇疆
-# 鍏叡閰嶇疆宸茬Щ鑷?Nacos: shared-common.yml, shared-sentinel.yml
+# product-service 本地配置
+# 公共配置已迁移至 Nacos: shared-common.yml
 
 server:
   port: 9005
@@ -10,16 +10,19 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         fail-fast: false
         enabled: true
       config:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         file-extension: yml
+    alibaba:
+      seata:
+        enabled: false
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/trade_product?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://mysql:3306/trade_product?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: mysql123
   flyway:
@@ -31,12 +34,10 @@ spring:
     encoding: UTF-8
   data:
     redis:
+      host: redis
+      port: 6379
       database: 14
       password: "redis123"
-
-# Seata 閰嶇疆锛坧roduct-service 涓嶅弬涓庡垎甯冨紡浜嬪姟锛?
-seata:
-  enabled: false
 
 logging:
   level:

@@ -37,12 +37,6 @@
             <artifactId>spring-cloud-loadbalancer</artifactId>
         </dependency>
 
-        <!-- Sentinel 限流 -->
-        <dependency>
-            <groupId>com.alibaba.cloud</groupId>
-            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
-        </dependency>
-
         <!-- Redis 响应式（Gateway 基于 WebFlux） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

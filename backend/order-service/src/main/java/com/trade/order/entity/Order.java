@@ -22,7 +22,7 @@ public class Order implements Serializable {
     private BigDecimal price;     // 单价
     private Integer quantity;    // 数量
     private BigDecimal amount;    // 总金额
-    private Integer status;       // 1:待支付 2:已支付 3:已完成 4:已取消
+    private Integer status;       // 1:待支付 2:已支付 3:已完成 4:已取消 5:处理中 6:取消处理中
     private Integer direction;     // 1:买入 2:卖出（默认买入）
     private Integer source;        // 1:普通订单 2:秒杀订单
     

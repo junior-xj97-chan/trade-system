@@ -20,26 +20,30 @@ public interface AccountFeignClient {
      */
     @PostMapping("/freeze")
     R<Void> freezeAmount(@RequestParam("userId") Long userId,
-                         @RequestParam("amount") BigDecimal amount);
+                         @RequestParam("amount") BigDecimal amount,
+                         @RequestParam("orderId") Long orderId);
 
     /**
      * 扣减余额（支付时调用）
      */
     @PostMapping("/deduct")
     R<Void> deductBalance(@RequestParam("userId") Long userId,
-                          @RequestParam("amount") BigDecimal amount);
+                          @RequestParam("amount") BigDecimal amount,
+                          @RequestParam("orderId") Long orderId);
 
     /**
      * 退款（取消订单时调用）
      */
     @PostMapping("/refund")
     R<Void> refund(@RequestParam("userId") Long userId,
-                   @RequestParam("amount") BigDecimal amount);
+                   @RequestParam("amount") BigDecimal amount,
+                   @RequestParam("orderId") Long orderId);
 
     /**
      * 卖出收款（卖出订单支付时调用，增加用户余额）
      */
     @PostMapping("/sellReceive")
     R<Void> sellReceive(@RequestParam("userId") Long userId,
-                        @RequestParam("amount") BigDecimal amount);
+                        @RequestParam("amount") BigDecimal amount,
+                        @RequestParam("orderId") Long orderId);
 }

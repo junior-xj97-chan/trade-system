@@ -1,5 +1,5 @@
-﻿# trade-service 鏈湴閰嶇疆
-# 鍏叡閰嶇疆宸茬Щ鑷?Nacos: shared-common.yml, shared-sentinel.yml
+# trade-service 本地配置
+# 公共配置已迁移至 Nacos: shared-common.yml
 
 server:
   port: 9003
@@ -10,19 +10,16 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         fail-fast: false
         enabled: true
       config:
-        server-addr: 127.0.0.1:8848
+        server-addr: nacos:8848
         group: DEFAULT_GROUP
         file-extension: yml
-    alibaba:
-      seata:
-        fail-fast: false
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/trade_trade?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://mysql:3306/trade_trade?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: mysql123
   flyway:
@@ -34,33 +31,10 @@ spring:
     encoding: UTF-8
   data:
     redis:
+      host: redis
+      port: 6379
       database: 13
       password: "redis123"
-
-# Seata 閰嶇疆
-seata:
-  enabled: true   # trade-service 鍙備笌鍒嗗竷寮忎簨鍔?
-  tx-service-group: trade-system-group
-  # 閰嶇疆涓績浣跨敤 Nacos
-  config:
-    type: nacos
-    nacos:
-      server-addr: 127.0.0.1:8848
-      group: DEFAULT_GROUP
-      username: nacos
-      password: nacos
-      data-id: seataServer.properties
-  # 娉ㄥ唽涓績浣跨敤 file 绫诲瀷锛堢洿鎺ヤ娇鐢ㄦ湰鍦?grouplist锛屼笉璧?Nacos 娉ㄥ唽涓績锛?
-  registry:
-    type: file
-    file:
-      name: file.conf
-  service:
-    vgroupMapping:
-      trade-system-group: default
-    # grouplist 鐨?key 鏄泦缇ゅ悕(default)锛屼笉鏄簨鍔＄粍鍚?
-    default:
-      grouplist: 127.0.0.1:8091
 
 logging:
   level:

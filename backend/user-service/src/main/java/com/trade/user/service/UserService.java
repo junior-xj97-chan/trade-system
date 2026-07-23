@@ -5,23 +5,27 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.trade.common.BizCode;
 import com.trade.common.BusinessException;
 import com.trade.common.PageResult;
+import com.trade.common.R;
 import com.trade.user.controller.UserController.*;
 import com.trade.user.entity.User;
+import com.trade.user.feign.AccountFeignClient;
 import com.trade.user.mapper.UserMapper;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -31,8 +35,19 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final AccountFeignClient accountFeignClient;
 
     private static final String TOKEN_PREFIX = "user:token:";
+    private static final String REFRESH_TOKEN_PREFIX = "user:refresh:";
+    private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
+
+    private static final long ACCESS_TOKEN_EXPIRE_MINUTES = 30;
+    private static final long REFRESH_TOKEN_EXPIRE_DAYS = 7;
+
+    private static final String LOGIN_FAIL_PREFIX = "user:login_fail:";
+    private static final String ACCOUNT_LOCK_PREFIX = "user:account_lock:";
+    private static final int MAX_LOGIN_FAIL_COUNT = 5;
+    private static final int LOCK_MINUTES = 15;
 
     /**
      * 用户注册
@@ -48,10 +63,26 @@ public class UserService {
         // 保存用户
         User user = new User();
         user.setUsername(request.getUsername());
-        user.setPassword(md5(request.getPassword()));
+        user.setPassword(encryptPassword(request.getPassword()));
         user.setPhone(request.getPhone());
         user.setStatus(1);
         userMapper.insert(user);
+
+        // 注册成功后自动创建账户（初始余额为0）
+        try {
+            R<Long> result = accountFeignClient.createAccount(new AccountFeignClient.CreateAccountRequest(user.getId(), BigDecimal.ZERO));
+            if (result == null || !result.isSuccess()) {
+                String msg = result != null ? result.getMessage() : "创建账户失败";
+                if (!msg.contains("账户已存在")) {
+                    throw new BusinessException(BizCode.SYSTEM_ERROR.getCode(), "用户注册成功，但账户创建失败，请联系客服");
+                }
+            }
+        } catch (Exception e) {
+            if (!e.getMessage().contains("账户已存在")) {
+                throw new BusinessException(BizCode.SYSTEM_ERROR.getCode(), "用户注册成功，但账户创建失败，请联系客服");
+            }
+        }
+
         return user.getId();
     }
 
@@ -66,19 +97,47 @@ public class UserService {
         if (user == null) {
             throw new BusinessException(BizCode.USER_NOT_FOUND);
         }
-        if (!user.getPassword().equals(md5(request.getPassword()))) {
+
+        String lockKey = ACCOUNT_LOCK_PREFIX + user.getId();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+            throw new BusinessException(BizCode.ACCOUNT_LOCKED);
+        }
+
+        if (!verifyPassword(request.getPassword(), user.getPassword())) {
+            incrementLoginFailCount(user.getId());
             throw new BusinessException(BizCode.PASSWORD_ERROR);
         }
         if (user.getStatus() == 0) {
             throw new BusinessException(BizCode.ACCOUNT_FROZEN);
         }
 
-        // 生成 token
-        String token = UUID.randomUUID().toString().replace("-", "");
-        // 用 String 序列化 userId，避免 Gateway（Jackson）反序列化 JDK 二进制值失败
-        redisTemplate.opsForValue().set(TOKEN_PREFIX + token, String.valueOf(user.getId()), 2, TimeUnit.HOURS);
-        // 返回完整的登录响应（包含 token、userId、username），与前端 LoginResp 对齐
-        return new LoginResp("Bearer " + token, user.getId(), user.getUsername());
+        resetLoginFailCount(user.getId());
+
+        String accessToken = UUID.randomUUID().toString().replace("-", "");
+        String refreshToken = UUID.randomUUID().toString().replace("-", "");
+
+        redisTemplate.opsForValue().set(TOKEN_PREFIX + accessToken, String.valueOf(user.getId()), ACCESS_TOKEN_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set(REFRESH_TOKEN_PREFIX + refreshToken, String.valueOf(user.getId()), REFRESH_TOKEN_EXPIRE_DAYS, TimeUnit.DAYS);
+
+        return new LoginResp("Bearer " + accessToken, refreshToken, user.getId(), user.getUsername());
+    }
+
+    private void incrementLoginFailCount(Long userId) {
+        String failKey = LOGIN_FAIL_PREFIX + userId;
+        Long failCount = redisTemplate.opsForValue().increment(failKey);
+        if (failCount == null) {
+            redisTemplate.opsForValue().set(failKey, "1", LOCK_MINUTES, TimeUnit.MINUTES);
+            failCount = 1L;
+        }
+        if (failCount >= MAX_LOGIN_FAIL_COUNT) {
+            String lockKey = ACCOUNT_LOCK_PREFIX + userId;
+            redisTemplate.opsForValue().set(lockKey, "locked", LOCK_MINUTES, TimeUnit.MINUTES);
+            redisTemplate.delete(failKey);
+        }
+    }
+
+    private void resetLoginFailCount(Long userId) {
+        redisTemplate.delete(LOGIN_FAIL_PREFIX + userId);
     }
 
     @Data
@@ -86,6 +145,7 @@ public class UserService {
     @AllArgsConstructor
     public static class LoginResp {
         private String token;
+        private String refreshToken;
         private Long userId;
         private String username;
     }
@@ -151,13 +211,13 @@ public class UserService {
             throw new BusinessException(BizCode.USER_NOT_FOUND);
         }
         // 校验旧密码
-        if (!user.getPassword().equals(md5(request.getOldPassword()))) {
+        if (!verifyPassword(request.getOldPassword(), user.getPassword())) {
             throw new BusinessException(BizCode.PASSWORD_ERROR);
         }
         // 更新新密码
         User u = new User();
         u.setId(userId);
-        u.setPassword(md5(request.getNewPassword()));
+        u.setPassword(encryptPassword(request.getNewPassword()));
         userMapper.updateById(u);
     }
 
@@ -172,11 +232,35 @@ public class UserService {
     }
 
     /**
+     * 使用 Refresh Token 刷新 Access Token
+     */
+    public LoginResp refreshToken(String refreshToken) {
+        String userIdStr = (String) redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + refreshToken);
+        if (userIdStr == null) {
+            throw new BusinessException(BizCode.REFRESH_TOKEN_INVALID);
+        }
+        Long userId = Long.parseLong(userIdStr);
+
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(BizCode.USER_NOT_FOUND);
+        }
+
+        String newAccessToken = UUID.randomUUID().toString().replace("-", "");
+        String newRefreshToken = UUID.randomUUID().toString().replace("-", "");
+
+        redisTemplate.delete(REFRESH_TOKEN_PREFIX + refreshToken);
+        redisTemplate.opsForValue().set(TOKEN_PREFIX + newAccessToken, String.valueOf(userId), ACCESS_TOKEN_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set(REFRESH_TOKEN_PREFIX + newRefreshToken, String.valueOf(userId), REFRESH_TOKEN_EXPIRE_DAYS, TimeUnit.DAYS);
+
+        return new LoginResp("Bearer " + newAccessToken, newRefreshToken, userId, user.getUsername());
+    }
+
+    /**
      * 上传头像
      * 保存到本地 uploads/avatars/ 目录，返回 /static/avatars/ 访问路径
      */
     public String uploadAvatar(String token, MultipartFile file) {
-        // 从 Redis 根据 token 查询 userId
         String userIdStr = (String) redisTemplate.opsForValue().get(TOKEN_PREFIX + token);
         if (userIdStr == null) {
             throw new BusinessException(BizCode.TOKEN_INVALID);
@@ -188,24 +272,39 @@ public class UserService {
             throw new BusinessException(BizCode.USER_NOT_FOUND);
         }
 
-        // 校验文件类型（仅允许图片）
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(BizCode.PARAM_ERROR);
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            throw new BusinessException(BizCode.PARAM_ERROR);
+        }
+
+        String ext = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        if (!isAllowedExtension(ext)) {
+            throw new BusinessException(BizCode.PARAM_ERROR);
+        }
+
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new BusinessException(BizCode.PARAM_ERROR);
         }
-        // 不允许的文件类型黑名单
-        if (contentType.equals("image/svg+xml") || contentType.equals("image/x-icon")) {
-            throw new BusinessException(BizCode.PARAM_ERROR);
+
+        try {
+            byte[] bytes = file.getBytes();
+            if (bytes.length == 0) {
+                throw new BusinessException(BizCode.PARAM_ERROR);
+            }
+            if (!validateImageMagicNumber(bytes, ext)) {
+                throw new BusinessException(BizCode.PARAM_ERROR);
+            }
+        } catch (IOException e) {
+            throw new BusinessException(BizCode.SYSTEM_ERROR.getCode(), "文件读取失败");
         }
 
-        // 生成唯一文件名：userId_时间戳_随机UUID.扩展名
-        String originalFilename = file.getOriginalFilename();
-        String ext = (originalFilename != null && originalFilename.contains("."))
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                : ".jpg";
         String filename = userId + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8) + ext;
 
-        // 保存到本地 uploads/avatars/ 目录
         String uploadDir = System.getProperty("user.dir") + File.separator + "uploads" + File.separator + "avatars";
         Path uploadPath = Paths.get(uploadDir);
         try {
@@ -213,10 +312,8 @@ public class UserService {
             Path filePath = uploadPath.resolve(filename);
             file.transferTo(filePath.toFile());
 
-            // 构造访问 URL（前端通过 /static 代理访问，不经过 Gateway）
             String avatarUrl = "/static/avatars/" + filename;
 
-            // 同时更新数据库中的 avatar 字段
             User u = new User();
             u.setId(userId);
             u.setAvatar(avatarUrl);
@@ -225,6 +322,31 @@ public class UserService {
             return avatarUrl;
         } catch (IOException e) {
             throw new RuntimeException("头像保存失败: " + e.getMessage(), e);
+        }
+    }
+
+    private boolean isAllowedExtension(String ext) {
+        return List.of(".jpg", ".jpeg", ".png", ".gif").contains(ext);
+    }
+
+    private boolean validateImageMagicNumber(byte[] bytes, String ext) {
+        if (bytes.length < 4) return false;
+
+        int firstByte = bytes[0] & 0xFF;
+        int secondByte = bytes[1] & 0xFF;
+        int thirdByte = bytes[2] & 0xFF;
+        int fourthByte = bytes[3] & 0xFF;
+
+        switch (ext) {
+            case ".jpg":
+            case ".jpeg":
+                return firstByte == 0xFF && secondByte == 0xD8;
+            case ".png":
+                return firstByte == 0x89 && secondByte == 0x50 && thirdByte == 0x4E && fourthByte == 0x47;
+            case ".gif":
+                return firstByte == 0x47 && secondByte == 0x49 && thirdByte == 0x46;
+            default:
+                return false;
         }
     }
 
@@ -248,7 +370,14 @@ public class UserService {
         private String newPassword;
     }
 
-    private String md5(String str) {
-        return DigestUtils.md5DigestAsHex(("trade:" + str).getBytes());
+    private String encryptPassword(String rawPassword) {
+        return PASSWORD_ENCODER.encode(rawPassword);
+    }
+
+    private boolean verifyPassword(String rawPassword, String encodedPassword) {
+        if (encodedPassword == null || rawPassword == null) {
+            return false;
+        }
+        return PASSWORD_ENCODER.matches(rawPassword, encodedPassword);
     }
 }

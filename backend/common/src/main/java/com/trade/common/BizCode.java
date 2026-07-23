@@ -17,6 +17,8 @@ public enum BizCode {
     PASSWORD_ERROR(2003, "密码错误"),
     TOKEN_EXPIRED(2004, "token已过期"),
     TOKEN_INVALID(2005, "token无效"),
+    REFRESH_TOKEN_INVALID(2006, "refresh token无效"),
+    ACCOUNT_LOCKED(2007, "账号已锁定，请15分钟后再试"),
 
     // 账户模块 3xxx
     ACCOUNT_NOT_FOUND(3001, "账户不存在"),
@@ -46,7 +48,11 @@ public enum BizCode {
     RATE_LIMIT_EXCEEDED(7001, "请求过于频繁，请稍后重试"),
 
     // 幂等模块 8xxx
-    DUPLICATE_REQUEST(8001, "请求已处理，请勿重复提交");
+    DUPLICATE_REQUEST(8001, "请求已处理，请勿重复提交"),
+
+    // 鉴权模块 9xxx
+    NO_PERMISSION(9001, "无操作权限"),
+    INTERNAL_ACCESS_DENIED(9002, "内部接口禁止外部访问");
 
     private final Integer code;
     private final String message;

@@ -5,6 +5,7 @@ import com.trade.trade.controller.TradeController.TradeRequest;
 import com.trade.trade.entity.Trade;
 import com.trade.trade.mapper.TradeMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TradeService {
@@ -32,12 +34,18 @@ public class TradeService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Trade executeTrade(TradeRequest request) {
-        // ========== 幂等性检查：防止重复创建交易记录 ==========
+        // ========== 幂等性检查：基于业务流水号防止重复创建 ==========
         String idempotentKey = IDEMPOTENT_PREFIX + "execute:" + request.getOrderId();
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            throw new com.trade.common.BusinessException(com.trade.common.BizCode.DUPLICATE_REQUEST);
+            // 幂等命中：查询已存在的交易记录并返回
+            log.info("【执行交易-幂等命中】orderId={}", request.getOrderId());
+            LambdaQueryWrapper<Trade> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Trade::getOrderId, request.getOrderId())
+                   .orderByDesc(Trade::getCreateTime)
+                   .last("LIMIT 1");
+            return tradeMapper.selectOne(wrapper);
         }
 
         Trade trade = new Trade();
@@ -65,12 +73,19 @@ public class TradeService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Trade refundTrade(Long orderId, Long userId, Long productId, BigDecimal price, Integer quantity) {
-        // ========== 幂等性检查：防止重复创建退款记录 ==========
+        // ========== 幂等性检查：基于业务流水号防止重复创建 ==========
         String idempotentKey = IDEMPOTENT_PREFIX + "refund:" + orderId;
         Boolean success = redisTemplate.opsForValue().setIfAbsent(
             idempotentKey, "processing", IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         if (!success) {
-            throw new com.trade.common.BusinessException(com.trade.common.BizCode.DUPLICATE_REQUEST);
+            // 幂等命中：查询已存在的退款记录并返回
+            log.info("【退款交易-幂等命中】orderId={}", orderId);
+            LambdaQueryWrapper<Trade> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Trade::getOrderId, orderId)
+                   .eq(Trade::getDirection, 3)
+                   .orderByDesc(Trade::getCreateTime)
+                   .last("LIMIT 1");
+            return tradeMapper.selectOne(wrapper);
         }
 
         Trade trade = new Trade();

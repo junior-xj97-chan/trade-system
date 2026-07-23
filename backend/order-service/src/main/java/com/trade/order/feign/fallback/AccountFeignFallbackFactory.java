@@ -24,26 +24,26 @@ public class AccountFeignFallbackFactory implements FallbackFactory<AccountFeign
         return new AccountFeignClient() {
 
             @Override
-            public R<Void> freezeAmount(Long userId, BigDecimal amount) {
-                log.warn("[AccountFeignClient#freezeAmount] 熔断降级 userId={}, amount={}", userId, amount);
+            public R<Void> freezeAmount(Long userId, BigDecimal amount, Long orderId) {
+                log.warn("[AccountFeignClient#freezeAmount] 熔断降级 userId={}, amount={}, orderId={}", userId, amount, orderId);
                 return R.fail("账户服务暂不可用，冻结资金失败，请稍后重试");
             }
 
             @Override
-            public R<Void> deductBalance(Long userId, BigDecimal amount) {
-                log.warn("[AccountFeignClient#deductBalance] 熔断降级 userId={}, amount={}", userId, amount);
+            public R<Void> deductBalance(Long userId, BigDecimal amount, Long orderId) {
+                log.warn("[AccountFeignClient#deductBalance] 熔断降级 userId={}, amount={}, orderId={}", userId, amount, orderId);
                 return R.fail("账户服务暂不可用，扣减余额失败，请稍后重试");
             }
 
             @Override
-            public R<Void> refund(Long userId, BigDecimal amount) {
-                log.warn("[AccountFeignClient#refund] 熔断降级 userId={}, amount={}", userId, amount);
+            public R<Void> refund(Long userId, BigDecimal amount, Long orderId) {
+                log.warn("[AccountFeignClient#refund] 熔断降级 userId={}, amount={}, orderId={}", userId, amount, orderId);
                 return R.fail("账户服务暂不可用，退款失败，请稍后重试");
             }
 
             @Override
-            public R<Void> sellReceive(Long userId, BigDecimal amount) {
-                log.warn("[AccountFeignClient#sellReceive] 熔断降级 userId={}, amount={}", userId, amount);
+            public R<Void> sellReceive(Long userId, BigDecimal amount, Long orderId) {
+                log.warn("[AccountFeignClient#sellReceive] 熔断降级 userId={}, amount={}, orderId={}", userId, amount, orderId);
                 return R.fail("账户服务暂不可用，卖出收款失败，请稍后重试");
             }
         };

@@ -10,8 +10,6 @@ import type {
   Position,
   PageResult,
   PageReq,
-  SearchReq,
-  SearchResp,
 } from '@/types'
 
 const UPLOAD_BASE = ''   // 上传走 /user/avatar，由 Vite 代理到 user-service（绕过 Gateway）
@@ -112,6 +110,9 @@ export const orderApi = {
   pay(id: string | number) {
     return http.put<R>(`/order/pay/${id}`)
   },
+  sell(id: string | number) {
+    return http.put<R>(`/order/sell/${id}`)
+  },
   cancel(id: string | number) {
     return http.put<R>(`/order/cancel/${id}`)
   },
@@ -130,12 +131,4 @@ export const positionApi = {
   },
 }
 
-// ========== 搜索（ES） ==========
-export const searchApi = {
-  search(data: SearchReq) {
-    return http.post<R<SearchResp>>('/search', data)
-  },
-  quickSearch(keyword: string) {
-    return http.get<R<SearchResp>>('/search/quick', { params: { keyword } })
-  },
-}
+

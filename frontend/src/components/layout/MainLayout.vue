@@ -24,10 +24,7 @@
           <el-icon><Goods /></el-icon>
           <template #title>商品列表</template>
         </el-menu-item>
-        <el-menu-item index="/search">
-          <el-icon><Search /></el-icon>
-          <template #title>商品搜索</template>
-        </el-menu-item>
+        
         <el-menu-item index="/position">
           <el-icon><TrendCharts /></el-icon>
           <template #title>持仓管理</template>
@@ -44,24 +41,6 @@
           <el-icon><User /></el-icon>
           <template #title>个人中心</template>
         </el-menu-item>
-        <el-sub-menu index="/ai">
-          <template #title>
-            <el-icon><ChatDotRound /></el-icon>
-            <span>AI 中心</span>
-          </template>
-          <el-menu-item index="/ai">
-            <el-icon><ChatDotRound /></el-icon>
-            <template #title>AI 助手</template>
-          </el-menu-item>
-          <el-menu-item index="/ai/decision">
-            <el-icon><Cpu /></el-icon>
-            <template #title>智能决策</template>
-          </el-menu-item>
-          <el-menu-item index="/ai/bindings">
-            <el-icon><Link /></el-icon>
-            <template #title>子产品绑定</template>
-          </el-menu-item>
-        </el-sub-menu>
       </el-menu>
     </el-aside>
 
@@ -113,7 +92,7 @@ import { ref, computed, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import {
-  Odometer, Goods, Search, TrendCharts, List, Wallet, User, ChatDotRound, Cpu, Link,
+  Odometer, Goods, TrendCharts, List, Wallet, User,
   Fold, Expand, ArrowDown,
 } from '@element-plus/icons-vue'
 

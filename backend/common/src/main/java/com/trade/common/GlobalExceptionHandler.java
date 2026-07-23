@@ -1,7 +1,6 @@
 package com.trade.common;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.seata.core.exception.TransactionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -10,24 +9,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * 全局异常处理器
  * <p>
- * 统一处理 Seata 分布式事务异常和业务异常，返回友好错误信息
+ * 统一处理业务异常和系统异常，返回友好错误信息
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    // ==================== Seata 事务异常 ====================
-
-    /**
-     * Seata 分布式事务全局回滚异常
-     * 触发场景：任一分支事务失败，全局回滚
-     */
-    @ExceptionHandler(TransactionException.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public R<Void> handleTransactionException(TransactionException e) {
-        log.error("【Seata事务异常】分布式事务执行失败，触发全局回滚", e);
-        return R.fail(BizCode.BUSINESS_ERROR);
-    }
 
     // ==================== 业务异常 ====================
 
